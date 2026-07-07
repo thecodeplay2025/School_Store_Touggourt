@@ -341,41 +341,7 @@ export default function Header({
                     </div>
                   </button>
 
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      onOpenWishlist();
-                    }}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl text-right text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-rose-500 transition-all"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Heart className="h-4 w-4 text-rose-400" />
-                      <span>المفضلة الخاصة بي</span>
-                    </div>
-                    {wishlistCount > 0 && (
-                      <span className="bg-rose-100 text-rose-600 text-xs font-black px-2.5 py-0.5 rounded-full">
-                        {wishlistCount} منتج
-                      </span>
-                    )}
-                  </button>
 
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      onOpenCart();
-                    }}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl text-right text-sm font-bold text-slate-700 hover:bg-slate-50 hover:text-brand-blue transition-all"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <ShoppingBag className="h-4 w-4 text-brand-blue" />
-                      <span>عربة التسوق</span>
-                    </div>
-                    {cartItemsCount > 0 && (
-                      <span className="bg-brand-blue text-white text-xs font-black px-2.5 py-0.5 rounded-full">
-                        {cartItemsCount} قطع
-                      </span>
-                    )}
-                  </button>
                 </div>
 
 
