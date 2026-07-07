@@ -1,0 +1,21 @@
+{
+  "entities": {
+    "StoreState": {
+      "title": "StoreState",
+      "description": "Entire store state or key-value structures stored in Firestore",
+      "type": "object",
+      "properties": {
+        "list": {
+          "type": "array",
+          "description": "An array of items for list documents, or a map for settings"
+        }
+      }
+    }
+  },
+  "firestore": {
+    "/store_data/{documentId}": {
+      "schema": "StoreState",
+      "description": "A document representing a part of the store database state"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "firestore": [
+    {
+      "database": "ai-studio-schoolstoretougg-b34a2d09-602f-4c7a-a928-567751600572",
+      "rules": "firestore.rules"
+    }
+  ]
+}

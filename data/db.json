@@ -1,0 +1,497 @@
+{
+  "products": [
+    {
+      "category": "bags",
+      "id": "bag-premium-blue",
+      "name": "حقيبة مدرسية مريحة ومقاومة للماء - أزرق ملكي",
+      "features": [
+        "مقاومة كاملة للمياه والأمطار",
+        "دعم طبي للظهر والكتفين ببطانة هوائية",
+        "مساحة تخزين مخصصة للكمبيوتر المحمول أو اللوحي",
+        "سحابات (Zippers) يابانية عالية التحمل"
+      ],
+      "rating": 4.9,
+      "isPopular": true,
+      "price": 3800,
+      "inStock": true,
+      "image": "https://images.unsplash.com/photo-1622560480605-d83c853bc5c3?auto=format&fit=crop&q=80&w=600",
+      "brand": "SchoolPro",
+      "description": "حقيبة ظهر مدرسية متميزة مصممة خصيصاً لتلاميذ الطورين المتوسط والثانوي. تتميز بدعم كامل للظهر لتقليل الوزن وحماية العمود الفقري، مع جيوب متعددة لتنظيم مثالي ومادة مقاومة للماء لحماية الكتب والكراريس."
+    },
+    {
+      "category": "bags",
+      "rating": 4.8,
+      "features": [
+        "أشرطة سلامة عاكسة للضوء ليلاً",
+        "وزن خفيف جداً يزن أقل من 500 غرام",
+        "مرفقة بمقلمة من نفس اللون مجاناً",
+        "سهلة الغسيل والتنظيف في الغسالة"
+      ],
+      "name": "حقيبة ظهر مريحة للأطفال برسومات لطيفة - وردي",
+      "id": "bag-ergonomic-pink",
+      "inStock": true,
+      "price": 2900,
+      "isPopular": false,
+      "description": "حقيبة مبهجة وخفيفة الوزن ومثالية للتعليم الابتدائي والتحضيري. تصميم مريح ومقاوم للاهتراء والتمزق اليومي، مع أشرطة عاكسة للضوء لسلامة الأطفال في الصباح الباكر.",
+      "brand": "KidsJoy",
+      "image": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&q=80&w=600"
+    },
+    {
+      "category": "bags",
+      "rating": 4.7,
+      "features": [
+        "منفذ شحن USB مدمج للباوربانك",
+        "مادة مضادة للسرقة وسحابات مخفية",
+        "تصميم عصري بسيط يناسب الجامعة والعمل",
+        "جيوب مبطنة لحماية قصوى للمعدات الإلكترونية"
+      ],
+      "name": "حقيبة ظهر كلاسيكية أنيقة للجامعيين - رمادي فحمي",
+      "id": "bag-university-dark",
+      "inStock": true,
+      "isPopular": true,
+      "price": 4500,
+      "brand": "CampusCore",
+      "image": "https://images.unsplash.com/photo-1577733966973-d680bffd2e80?auto=format&fit=crop&q=80&w=600",
+      "description": "حقيبة ظهر ذات طابع عصري مخصصة لطلبة جامعة توقرت والموظفين. تتسع للكتب الكبيرة والكمبيوتر وتتميز بمدخل شحن USB خارجي لتشغيل الهواتف أثناء التنقل."
+    },
+    {
+      "rating": 4.8,
+      "features": [
+        "ورق أبيض ناصع ذو كثافة 80 غرام/متر مربع",
+        "غلاف بلاستيكي ملون مقاوم للماء والتمزق",
+        "تخطيط عربي دقيق ومريح للعينين",
+        "ألوان متعددة لتنظيم وتفريق المواد الدراسية"
+      ],
+      "name": "مجموعة كراريس تكنو الفاخرة - 96 صفحة (6 قطع)",
+      "id": "notebook-super-pack",
+      "category": "notebooks",
+      "brand": "Techno",
+      "description": "حزمة توفيرية تحتوي على 6 كراريس بجودة ورق عالية 80غ/م²، مسطرة ومخططة بعناية لتسهيل مراجعة وتدوين الدروس لكافة الأطوار التعليمية.",
+      "image": "https://images.unsplash.com/photo-1531346878377-a5be20888e57?auto=format&fit=crop&q=80&w=600",
+      "inStock": true,
+      "isPopular": true,
+      "price": 1100
+    },
+    {
+      "category": "notebooks",
+      "id": "sketchbook-a4-professional",
+      "name": "كشكول رسم فني مقاس A4 لطلبة الفنون والهندسة",
+      "features": [
+        "ورق خالٍ من الأحماض للحفاظ على ثبات الألوان",
+        "سلك لولبي متين يتيح تدوير الصفحات 360 درجة",
+        "غلاف خلفي صلب جداً يدعم الرسم بدون طاولة",
+        "مناسب لكافة تقنيات الرسم والتظليل"
+      ],
+      "rating": 4.6,
+      "isPopular": false,
+      "price": 750,
+      "inStock": true,
+      "brand": "Canson",
+      "image": "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&q=80&w=600",
+      "description": "كشكول رسم مميز يحتوي على 80 ورقة بيضاء محببة بوزن 120غ/م²، مثالي للألوان المائية، الرصاص، الفحم والباستيل. الغلاف صلب للمحافظة على الأعمال الفنية."
+    },
+    {
+      "name": "علبة أقلام حبر جاف ملونة Stabilo Point 88 - 10 ألوان",
+      "id": "pens-stabilo-gel",
+      "rating": 4.9,
+      "features": [
+        "رأس دقيق جداً 0.4 مم للكتابة الفنية والمخططات",
+        "حبر ذو جودة عالية لا يخترق صفحات الورق",
+        "تصميم سداسي شهير ومريح جداً في اليد",
+        "غطاء محكم الإغلاق يحمي الأقلام من الجفاف الطويل"
+      ],
+      "category": "writing",
+      "brand": "Stabilo",
+      "image": "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&q=80&w=600",
+      "description": "الأقلام الأيقونية المفضلة للتلاميذ والطلبة لتنظيم الدروس، رسم المخططات والكتابة الدقيقة بفضل رأسها الرفيع جداً 0.4 مم المصنوع من المعدن المقاوم للصدأ.",
+      "isPopular": true,
+      "price": 1650,
+      "inStock": true
+    },
+    {
+      "rating": 4.8,
+      "features": [
+        "تقنية منع جفاف الحبر حتى 4 ساعات بدون غطاء",
+        "ألوان ناعمة ومشرقة لا تسبب بقعاً خلف الورقة",
+        "حجم مثالي يسهل حمله في أي مقلمة مدرسية",
+        "حبر مائي آمن تماماً وخالٍ من المواد الكيميائية الضارة"
+      ],
+      "name": "مجموعة أقلام تحديد باستيل ناعمة Stabilo Boss - 6 ألوان",
+      "id": "highlighters-pastel-pack",
+      "category": "writing",
+      "description": "أقلام تحديد ناعمة بألوان الباستيل المريحة للعين، مخصصة لتظليل النقاط الهامة في الدروس والمحاضرات بدون إجهاد بصري أو التغطية على النصوص.",
+      "image": "https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&q=80&w=600",
+      "brand": "Stabilo",
+      "inStock": true,
+      "isPopular": false,
+      "price": 1200
+    },
+    {
+      "id": "geometry-maped-metal",
+      "name": "علبة أدوات هندسية معدنية متكاملة Maped - 9 قطع",
+      "features": [
+        "علبة معدنية صلبة تحمي الأدوات من الكسر والخدوش",
+        "مدور معدني ذو ثبات عالي وقابلية قفل للحساب الدقيق",
+        "تدرجات قياس واضحة جداً مطبوعة بأشعة فوق بنفسجية",
+        "أدوات مصممة لتدوم لسنوات طوال من الدراسة"
+      ],
+      "rating": 4.7,
+      "category": "geometry-art",
+      "description": "العلبة الكلاسيكية الضرورية لدروس الرياضيات والهندسة من الطور الابتدائي إلى الثانوي. تحتوي على مدور حديدي متين، كوسين، منقلة، مسطرة، ممحاة، مبراة، وقلم رصاص صغير.",
+      "image": "https://images.unsplash.com/photo-1452860606245-08befc0ff44b?auto=format&fit=crop&q=80&w=600",
+      "brand": "Maped",
+      "isPopular": true,
+      "price": 950,
+      "inStock": true
+    },
+    {
+      "inStock": true,
+      "isPopular": true,
+      "price": 2400,
+      "brand": "Faber-Castell",
+      "image": "https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&q=80&w=600",
+      "description": "علبة تلوين فاخرة ومثالية لتلاميذ الفنون والأنشطة الإبداعية. تتميز الأقلام بقلب ناعم وقوي مقاوم للكسر بفضل تقنية اللصق الخاص SV، وألوان زاهية ودافئة.",
+      "category": "geometry-art",
+      "features": [
+        "حماية قصوى لقلب الرصاص من الكسر بتقنية SV",
+        "أخشاب مستزرعة ومصنعة بشكل صديق وصحي للبيئة",
+        "ألوان ناعمة تندمج مع بعضها بشكل استثنائي ورائع",
+        "مجموعة واسعة النطاق من الدرجات والتدرجات اللونية"
+      ],
+      "rating": 4.9,
+      "id": "color-pencils-professional",
+      "name": "علبة أقلام تلوين خشبية Faber-Castell - 36 لوناً"
+    },
+    {
+      "category": "electronics",
+      "name": "آلة حاسبة علمية متطورة CASIO fx-991ARX - النسخة العربية",
+      "id": "calculator-casio-scientific",
+      "rating": 5,
+      "features": [
+        "واجهة مستخدم عربية كاملة مصممة للمدارس العربية",
+        "شاشة عالية الدقة تظهر المعادلات كشكلها في الكتاب المدرسي",
+        "مصدر طاقة ثنائي: خلية شمسية وبطارية احتياطية",
+        "تدعم ميزة QR Code لإظهار المخططات البيانية على الهاتف"
+      ],
+      "isPopular": true,
+      "price": 5200,
+      "inStock": true,
+      "description": "الحاسبة العلمية الأقوى والمثالية لطلبة البكالوريا والتعليم الجامعي في توقرت. تدعم اللغة العربية والإنجليزية بالكامل وتغطي كافة العمليات الرياضية المعقدة كالمصفوفات، المتجهات، وحساب التفاضل والتكامل.",
+      "brand": "CASIO",
+      "image": "https://images.unsplash.com/photo-1611125832047-1d7ad1e8e48b?auto=format&fit=crop&q=80&w=600"
+    },
+    {
+      "image": "https://images.unsplash.com/photo-1583485088034-697b5bc54ccd?auto=format&fit=crop&q=80&w=600",
+      "description": "بديل ذكي وصديق للبيئة للورق والسبورة العادية. تتيح للأطفال التدرب على الكتابة، الرياضيات والرسم بدون فوضى أو ألوان كيميائية. بضغطة زر واحدة تمسح الشاشة بالكامل.",
+      "brand": "EcoWrite",
+      "inStock": true,
+      "price": 1800,
+      "isPopular": false,
+      "rating": 4.5,
+      "features": [
+        "شاشة حماية للعين خالية تماماً من الإشعاع والوميض",
+        "بطارية تدوم لأكثر من سنتين وسهلة الاستبدال والمقايضة",
+        "مفتاح قفل في الخلف لمنع المسح العفوي الهام",
+        "قلم كتابة مرفق ومرن يتناسب مع درجات الضغط المختلف"
+      ],
+      "name": "لوحة رسم وكتابة إلكترونية LCD مقاس 12 بوصة للأطفال",
+      "id": "tablet-educational-draw",
+      "category": "electronics"
+    }
+  ],
+  "categories": [
+    {
+      "count": 12,
+      "image": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&q=80&w=600",
+      "name": "حقائب ومحافظ مدرسية",
+      "id": "bags",
+      "bgHex": "#e0f2fe",
+      "colorClass": "from-blue-500 to-indigo-600",
+      "iconName": "ShoppingBag"
+    },
+    {
+      "count": 24,
+      "image": "https://images.unsplash.com/photo-1531346878377-a5be20888e57?auto=format&fit=crop&q=80&w=600",
+      "name": "دفاتر، كراريس وسجلات",
+      "id": "notebooks",
+      "bgHex": "#d1fae5",
+      "colorClass": "from-emerald-500 to-teal-600",
+      "iconName": "BookOpen"
+    },
+    {
+      "bgHex": "#fef3c7",
+      "colorClass": "from-amber-500 to-orange-600",
+      "iconName": "PenTool",
+      "count": 35,
+      "image": "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&q=80&w=600",
+      "name": "أقلام وأدوات الكتابة",
+      "id": "writing"
+    },
+    {
+      "count": 18,
+      "image": "https://images.unsplash.com/photo-1452860606245-08befc0ff44b?auto=format&fit=crop&q=80&w=600",
+      "name": "علب الهندسة وأدوات الرسم",
+      "id": "geometry-art",
+      "bgHex": "#ffe4e6",
+      "colorClass": "from-rose-500 to-pink-600",
+      "iconName": "Palette"
+    },
+    {
+      "count": 8,
+      "image": "https://images.unsplash.com/photo-1580537659444-2305365e5332?auto=format&fit=crop&q=80&w=600",
+      "name": "آلات حاسبة وأجهزة تعليمية",
+      "id": "electronics",
+      "bgHex": "#f3e8ff",
+      "colorClass": "from-violet-500 to-purple-600",
+      "iconName": "Cpu"
+    }
+  ],
+  "municipalities": [
+    {
+      "shippingFee": 150,
+      "name": "توقرت (وسط المدينة)",
+      "deliveryTime": "خلال 12-24 ساعة"
+    },
+    {
+      "shippingFee": 200,
+      "deliveryTime": "خلال 24-48 ساعة",
+      "name": "تماسين"
+    },
+    {
+      "name": "النزلة",
+      "deliveryTime": "خلال 12-24 ساعة",
+      "shippingFee": 150
+    },
+    {
+      "deliveryTime": "خلال 12-24 ساعة",
+      "name": "تبسبست",
+      "shippingFee": 150
+    },
+    {
+      "shippingFee": 300,
+      "name": "الطيبات",
+      "deliveryTime": "خلال 48 ساعة"
+    },
+    {
+      "deliveryTime": "خلال 48 ساعة",
+      "name": "الهجيرة",
+      "shippingFee": 350
+    },
+    {
+      "deliveryTime": "خلال 48 ساعة",
+      "name": "العالية",
+      "shippingFee": 350
+    },
+    {
+      "name": "المنقر",
+      "deliveryTime": "خلال 48 ساعة",
+      "shippingFee": 300
+    },
+    {
+      "deliveryTime": "خلال 48 ساعة",
+      "name": "سيدي سليمان",
+      "shippingFee": 300
+    },
+    {
+      "shippingFee": 300,
+      "name": "بن ناصر",
+      "deliveryTime": "خلال 48 ساعة"
+    },
+    {
+      "shippingFee": 250,
+      "deliveryTime": "خلال 24-48 ساعة",
+      "name": "بلدة عمر"
+    }
+  ],
+  "orders": [
+    {
+      "address": "وسط المدينة توقرت",
+      "total": 4200,
+      "phone": "0662000000",
+      "status": "pending",
+      "municipality": "توقرت",
+      "items": [],
+      "customerName": "عميل تجريبي توقرت",
+      "id": "test-order-999"
+    },
+    {
+      "id": "test-order-123",
+      "municipality": "توقرت",
+      "address": "Test Address",
+      "total": 1000,
+      "phone": "0661000000",
+      "status": "pending",
+      "customerName": "Test Client",
+      "items": []
+    }
+  ],
+  "users": [],
+  "reviews": [
+    {
+      "status": "approved",
+      "date": "2026-06-25",
+      "comment": "حقيبة متينة ومريحة جداً لابني في الطور المتوسط. أنصح بها بشدة!",
+      "userName": "كمال الطيبات",
+      "rating": 5,
+      "productId": "bag-premium-blue",
+      "productName": "حقيبة مدرسية مريحة ومقاومة للماء - أزرق ملكي",
+      "id": "rev-1"
+    },
+    {
+      "productId": "calculator-casio-scientific",
+      "rating": 5,
+      "id": "rev-2",
+      "productName": "آلة حاسبة علمية متطورة CASIO fx-991ARX - النسخة العربية",
+      "date": "2026-06-26",
+      "userName": "خديجة جامعة توقرت",
+      "comment": "أفضل حاسبة على الإطلاق لطلبة الجامعة والهندسة، واجهتها عربية مريحة للغاية.",
+      "status": "approved"
+    }
+  ],
+  "siteSettings": {
+    "promoBannerText": "توصيل مجاني في كافة بلديات توقرت للطلبات الأكثر من 6000 د.ج!",
+    "freeShippingThreshold": 6000,
+    "contactPhone2": "0771000000",
+    "storeName": "School Store Touggourt",
+    "contactPhone1": "0661000000",
+    "warehouseAddress": "حي المستقبل، وسط مدينة توقرت، الجزائر",
+    "storeDescription": "وجهتك الإلكترونية المحلية الأولى بولاية توقرت لشراء كافة اللوازم والمستلزمات المدرسية والأكاديمية بأفضل الأسعار."
+  },
+  "packs": [
+    {
+      "inStock": true,
+      "isPopular": true,
+      "description": "باك شامل ومتكامل يحتوي على كل ما يحتاجه تلميذ الطور الابتدائي من أدوات عالية الجودة وحقيبة مريحة لحماية ظهره.",
+      "features": [
+        "توفير أكثر من 1500 د.ج مقارنة بالشراء الفردي",
+        "حقيبة طبية مريحة ومناسبة لنمو الطفل",
+        "أدوات عالية الجودة من علامة Maped و Techno"
+      ],
+      "rating": 4.9,
+      "id": "pack-primary",
+      "name": "الباك الذهبي للطور الابتدائي - كامل الأدوات",
+      "isPack": true,
+      "price": 5900,
+      "image": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&q=80&w=600",
+      "brand": "SchoolStore",
+      "category": "bags",
+      "packItems": [
+        {
+          "name": "حقيبة مريحة للأطفال برسومات لطيفة",
+          "id": "item-1",
+          "quantity": 1
+        },
+        {
+          "name": "مجموعة كراريس تكنو الفاخرة - 96 صفحة",
+          "id": "item-2",
+          "quantity": 1
+        },
+        {
+          "name": "علبة أدوات الهندسة والقياس Maped",
+          "id": "item-3",
+          "quantity": 1
+        },
+        {
+          "id": "item-4",
+          "name": "مقلمة مدرسية مجهزة بأقلام جيل أساسية وممحاة",
+          "quantity": 1
+        },
+        {
+          "name": "علبة أقلام تلوين خشبية ممتازة 12 لونًا",
+          "id": "item-5",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "features": [
+        "آلة حاسبة كاسيو الأصلية fx-991ARX بوجهة عربية",
+        "حقيبة ظهرPro تدعم الظهر ومقاومة للمياه",
+        "كراريس فاخرة بجودة تدوين مريحة"
+      ],
+      "rating": 4.8,
+      "id": "pack-secondary",
+      "name": "باك التميز للطور المتوسط والثانوي - علمي وأدبي",
+      "description": "باك مخصص لطلبة الطور المتوسط والثانوي يجمع بين الأناقة والإنتاجية، مع آلة حاسبة علمية معتمدة ومحفظة متينة مقاومة للمطر.",
+      "inStock": true,
+      "isPopular": true,
+      "packItems": [
+        {
+          "quantity": 1,
+          "id": "item-1",
+          "name": "حقيبة ظهر مدرسية مريحة ومقاومة للماء - أزرق ملكي"
+        },
+        {
+          "quantity": 1,
+          "id": "item-2",
+          "name": "آلة حاسبة علمية متطورة CASIO fx-991ARX - النسخة العربية"
+        },
+        {
+          "quantity": 2,
+          "name": "مجموعة كراريس تكنو الفاخرة - 96 صفحة (6 قطع)",
+          "id": "item-3"
+        },
+        {
+          "quantity": 1,
+          "id": "item-4",
+          "name": "حزمة أقلام جيل ملونة Stabilo (6 ألوان)"
+        },
+        {
+          "name": "أقلام فسفورية تظليل باستيل (4 ألوان)",
+          "id": "item-5",
+          "quantity": 1
+        }
+      ],
+      "category": "electronics",
+      "brand": "SchoolStore",
+      "image": "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&q=80&w=600",
+      "isPack": true,
+      "price": 8800
+    },
+    {
+      "features": [
+        "حقيبة ذكية بـ USB لشحن الهواتف مريحة جداً",
+        "دفاتر رسم وتدوين مقاس كبير لخرائط المفاهيم والمحاضرات",
+        "مثالي كهدية قيمة للناجحين في البكالوريا بتوقرت"
+      ],
+      "rating": 4.9,
+      "id": "pack-university",
+      "name": "الباك الجامعي الذكي - لطلبة الكليات والهندسة",
+      "description": "الحزمة المتكاملة لطلبة جامعة توقرت تحتوي على حقيبة ذكية منفذ شحن USB وأدوات التدوين والتخطيط الاحترافية.",
+      "inStock": true,
+      "isPopular": false,
+      "packItems": [
+        {
+          "name": "حقيبة ظهر كلاسيكية أنيقة للجامعيين - منفذ USB",
+          "id": "item-1",
+          "quantity": 1
+        },
+        {
+          "quantity": 1,
+          "name": "دفتر رسم احترافي مقاس A4 لطلبة الهندسة والرسم",
+          "id": "item-2"
+        },
+        {
+          "quantity": 1,
+          "name": "آلة حاسبة علمية متطورة CASIO fx-991ARX",
+          "id": "item-3"
+        },
+        {
+          "name": "حزمة أقلام جيل ملونة فاخرة Stabilo",
+          "id": "item-4",
+          "quantity": 1
+        },
+        {
+          "quantity": 1,
+          "name": "أقلام تظليل فسفورية باستيل ملونة",
+          "id": "item-5"
+        }
+      ],
+      "category": "bags",
+      "image": "https://images.unsplash.com/photo-1577733966973-d680bffd2e80?auto=format&fit=crop&q=80&w=600",
+      "brand": "CampusPro",
+      "isPack": true,
+      "price": 9500
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "School Store Touggourt",
+  "description": "متجر إلكتروني احترافي لبيع اللوازم والأدوات المدرسية في ولاية توقرت بالجزائر",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
