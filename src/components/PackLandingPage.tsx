@@ -100,6 +100,9 @@ export default function PackLandingPage({
     };
   };
 
+  const standardOriginalPrice = originalItems.reduce((sum, item) => sum + (item.quantity * getItemUnitPrice(item.name)), 0);
+  const initialDiscount = standardOriginalPrice > product.price ? Math.round(((standardOriginalPrice - product.price) / standardOriginalPrice) * 100) : 0;
+
   const totalItemsCount = customPackItems.reduce((acc, curr) => acc + curr.quantity, 0);
 
   const formatPrice = (price: number) => {
@@ -180,18 +183,23 @@ export default function PackLandingPage({
       </div>
 
       {/* Price block */}
-      <div className="bg-gradient-to-r from-emerald-500/5 via-emerald-500/10 to-transparent p-5 rounded-2xl border border-emerald-500/10">
+      <div className="bg-gradient-to-r from-emerald-500/5 via-emerald-500/10 to-transparent p-5 rounded-2xl border border-emerald-500/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="text-xs text-slate-400 font-bold block mb-1">سعر الباك النهائي:</span>
           <div className="flex items-baseline gap-2.5">
             <span className="text-3xl font-black text-emerald-600">{formatPrice(currentPrice)}</span>
-            {!isCustomized && (
+            {!isCustomized && standardOriginalPrice > product.price && (
               <span className="text-sm font-bold text-slate-400 line-through">
-                {formatPrice(product.price + 1500)}
+                {formatPrice(standardOriginalPrice)}
               </span>
             )}
           </div>
         </div>
+        {!isCustomized && initialDiscount > 0 && (
+          <div className="bg-rose-500/10 text-rose-650 text-rose-600 font-black text-xs py-1.5 px-3 rounded-lg border border-rose-500/20 self-start sm:self-center">
+            وفرت {initialDiscount}% من قيمة الأدوات! 🔥
+          </div>
+        )}
       </div>
 
       {/* Quick info buttons */}

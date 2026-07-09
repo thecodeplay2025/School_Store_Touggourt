@@ -19,7 +19,8 @@ import {
   GraduationCap,
   Sparkles,
   AlertTriangle,
-  ShoppingCart
+  ShoppingCart,
+  Trash2
 } from 'lucide-react';
 
 import { Product, CartItem, Order, User, Review, SiteSettings, Category, Municipality } from './types';
@@ -218,6 +219,7 @@ export default function App() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [activeProductDetail, setActiveProductDetail] = useState<Product | null>(null);
   const [directPurchaseItem, setDirectPurchaseItem] = useState<CartItem | null>(null);
+  const [isClearCartModalOpen, setIsClearCartModalOpen] = useState(false);
   
   // Track order form states
   const [trackOrderId, setTrackOrderId] = useState('');
@@ -975,6 +977,13 @@ export default function App() {
               </div>
               <div className="flex items-center gap-2.5 shrink-0">
                 <button 
+                  id="top-cart-bar-checkout-btn"
+                  onClick={() => setIsCheckoutOpen(true)}
+                  className="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-black text-xs sm:text-sm px-4.5 py-2 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer border border-orange-600/30"
+                >
+                  <span>اشتري الآن 🛍️</span>
+                </button>
+                <button 
                   id="top-cart-bar-view-btn"
                   onClick={() => setIsCartOpen(true)}
                   className="bg-white/15 hover:bg-white/25 active:scale-95 text-white font-black text-xs sm:text-sm px-4 py-2 rounded-xl border border-white/20 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
@@ -982,11 +991,13 @@ export default function App() {
                   <span>شاهد السلة 🛒</span>
                 </button>
                 <button 
-                  id="top-cart-bar-checkout-btn"
-                  onClick={() => setIsCheckoutOpen(true)}
-                  className="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-black text-xs sm:text-sm px-4.5 py-2 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer border border-orange-600/30"
+                  id="top-cart-bar-clear-btn"
+                  onClick={() => setIsClearCartModalOpen(true)}
+                  className="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-xs sm:text-sm px-3 py-2 rounded-xl border border-rose-600/30 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="إفراغ السلة"
                 >
-                  <span>اشتري الآن 🛍️</span>
+                  <Trash2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">حذف السلة</span>
                 </button>
               </div>
             </div>
@@ -1174,6 +1185,16 @@ export default function App() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8" dir="rtl">
               {displayPacks.map((pack) => {
                 const totalItems = pack.packItems ? pack.packItems.reduce((acc, curr) => acc + curr.quantity, 0) : 0;
+                
+                // Calculate the original price of individual tools inside this pack
+                const originalPrice = pack.packItems ? pack.packItems.reduce((sum, item) => {
+                  const prod = products.find(p => p.name.trim().toLowerCase() === item.name.trim().toLowerCase());
+                  return sum + (prod ? prod.price * item.quantity : 0);
+                }, 0) : 0;
+
+                // Calculate discount percentage
+                const discount = originalPrice > pack.price ? Math.round(((originalPrice - pack.price) / originalPrice) * 100) : 0;
+
                 return (
                   <motion.div
                      key={pack.id}
@@ -1194,6 +1215,12 @@ export default function App() {
                           <Sparkles className="h-3 w-3 text-yellow-200 animate-pulse shrink-0" />
                           <span>مميز ✨</span>
                         </div>
+
+                        {discount > 0 && (
+                          <div className="absolute top-4 left-4 bg-red-650 bg-rose-600 text-white font-black text-xs py-1.5 px-3 rounded-full shadow-md z-10 flex items-center gap-1 animate-pulse">
+                            <span>خصم {discount}% 🔥</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="p-5 space-y-4">
@@ -1211,11 +1238,22 @@ export default function App() {
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="text-[10px] text-slate-400 font-black block">السعر الإجمالي للباك:</span>
-                          <span className="text-lg font-black text-emerald-600">{pack.price} د.ج</span>
+                          <div className="flex items-baseline gap-1.5 flex-wrap">
+                            <span className="text-lg font-black text-emerald-600">{formatPrice(pack.price)}</span>
+                            {originalPrice > pack.price && (
+                              <span className="text-xs text-slate-400 line-through font-semibold">{formatPrice(originalPrice)}</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="bg-amber-100 text-amber-800 font-black text-[10px] py-1 px-3 rounded-lg border border-amber-200/60">
-                          توفير مضمون 💎
-                        </div>
+                        {discount > 0 ? (
+                          <div className="bg-rose-500/10 text-rose-600 font-black text-xs py-1.5 px-3 rounded-lg border border-rose-500/20">
+                            وفر {discount}% 🎉
+                          </div>
+                        ) : (
+                          <div className="bg-amber-100 text-amber-800 font-black text-[10px] py-1 px-3 rounded-lg border border-amber-200/60">
+                            توفير مضمون 💎
+                          </div>
+                        )}
                       </div>
                       
                       <div className="flex items-center gap-2">
@@ -1534,6 +1572,7 @@ export default function App() {
           setIsCartOpen(false);
           setIsCheckoutOpen(true);
         }}
+        onClearCart={handleClearCart}
       />
 
       {/* Wishlist Drawer Panel */}
@@ -1557,6 +1596,69 @@ export default function App() {
         onClearCart={directPurchaseItem ? () => setDirectPurchaseItem(null) : handleClearCart}
         isDirect={!!directPurchaseItem}
       />
+
+      {/* Clear Cart Confirmation Modal */}
+      <AnimatePresence>
+        {isClearCartModalOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsClearCartModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"
+            />
+            
+            {/* Modal Box */}
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-slate-100/50 relative z-10 text-right flex flex-col items-center"
+              dir="rtl"
+            >
+              {/* Icon */}
+              <div className="bg-rose-50 text-rose-600 p-4 rounded-2xl mb-4.5 animate-pulse">
+                <Trash2 className="h-7 w-7" />
+              </div>
+              
+              {/* Title */}
+              <h3 className="text-lg font-black text-slate-900 mb-2">
+                تفريغ عربة التسوق
+              </h3>
+              
+              {/* Text */}
+              <p className="text-slate-500 text-sm font-semibold text-center mb-6 leading-relaxed">
+                هل أنت متأكد من حذف جميع المنتجات المتواجدة في سلتك؟ لا يمكن التراجع عن هذا الإجراء.
+              </p>
+              
+              {/* Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                <button
+                  onClick={() => {
+                    handleClearCart();
+                    setIsClearCartModalOpen(false);
+                    setToast({ message: 'تم إفراغ السلة بنجاح 🗑️', type: 'success' });
+                  }}
+                  className="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black py-3 px-6 rounded-2xl w-full transition-all cursor-pointer shadow-md shadow-rose-600/10 text-center"
+                  id="modal-clear-cart-confirm"
+                >
+                  نعم، احذف الكل
+                </button>
+                <button
+                  onClick={() => setIsClearCartModalOpen(false)}
+                  className="bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold py-3 px-6 rounded-2xl w-full transition-all cursor-pointer text-center"
+                  id="modal-clear-cart-cancel"
+                >
+                  تراجع
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

@@ -9,6 +9,7 @@ export interface Product {
   name: string;
   description: string;
   price: number; // in DZD
+  purchasePrice?: number; // in DZD
   image: string;
   category: string;
   rating: number;

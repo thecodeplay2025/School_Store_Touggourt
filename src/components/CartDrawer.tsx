@@ -11,6 +11,7 @@ interface CartDrawerProps {
   onUpdateQuantity: (productId: string, quantity: number) => void;
   onRemoveItem: (productId: string) => void;
   onCheckout: () => void;
+  onClearCart: () => void;
 }
 
 export default function CartDrawer({
@@ -19,14 +20,18 @@ export default function CartDrawer({
   cart,
   onUpdateQuantity,
   onRemoveItem,
-  onCheckout
+  onCheckout,
+  onClearCart
 }: CartDrawerProps) {
   
+  const [showConfirmClear, setShowConfirmClear] = React.useState(false);
+
   React.useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
+      setShowConfirmClear(false);
     }
     return () => {
       document.body.style.overflow = '';
@@ -64,7 +69,7 @@ export default function CartDrawer({
             className="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col justify-between border-l border-slate-100"
           >
             {/* Header */}
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between" dir="rtl">
               <div className="flex items-center gap-2">
                 <div className="bg-blue-50 text-brand-blue p-2 rounded-xl">
                   <ShoppingBag className="h-5 w-5" />
@@ -74,14 +79,50 @@ export default function CartDrawer({
                   <p className="text-xs text-slate-400 font-semibold">{cart.length} منتجات مضافة</p>
                 </div>
               </div>
-              <button
-                onClick={onClose}
-                className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all"
-                title="إغلاق السلة"
-                id="close-cart-button"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              
+              <div className="flex items-center gap-2">
+                {cart.length > 0 && (
+                  showConfirmClear ? (
+                    <div className="flex items-center gap-1.5 bg-rose-50 border border-rose-100/50 p-1 rounded-xl animate-in fade-in zoom-in-95 duration-200">
+                      <span className="text-[10px] text-rose-700 font-extrabold px-1">حذف الكل؟</span>
+                      <button
+                        onClick={() => {
+                          onClearCart();
+                          setShowConfirmClear(false);
+                        }}
+                        className="bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-black px-2 py-1 rounded-lg transition-all"
+                        id="confirm-clear-cart-button"
+                      >
+                        نعم
+                      </button>
+                      <button
+                        onClick={() => setShowConfirmClear(false)}
+                        className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-bold px-2 py-1 rounded-lg transition-all"
+                        id="cancel-clear-cart-button"
+                      >
+                        لا
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowConfirmClear(true)}
+                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                      title="إفراغ السلة بالكامل"
+                      id="clear-cart-trigger"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  )
+                )}
+                <button
+                  onClick={onClose}
+                  className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all"
+                  title="إغلاق السلة"
+                  id="close-cart-button"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             {/* Cart Items Area */}

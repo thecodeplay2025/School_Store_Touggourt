@@ -9,6 +9,7 @@ import {
   TrendingUp, 
   Settings, 
   Plus, 
+  Minus,
   Edit, 
   Trash2, 
   MapPin, 
@@ -118,6 +119,7 @@ export default function AdminDashboard({
   const [prodName, setProdName] = useState('');
   const [prodDesc, setProdDesc] = useState('');
   const [prodPrice, setProdPrice] = useState(1000);
+  const [prodPurchasePrice, setProdPurchasePrice] = useState(800);
   const [prodImage, setProdImage] = useState('');
   const [prodCategory, setProdCategory] = useState(categories[0]?.id || 'bags');
   const [prodBrand, setProdBrand] = useState('');
@@ -139,6 +141,20 @@ export default function AdminDashboard({
   const [packItemsList, setPackItemsList] = useState<{ id: string; name: string; quantity: number }[]>([]);
   const [tempToolName, setTempToolName] = useState('');
   const [tempToolQty, setTempToolQty] = useState(1);
+  const [showProductSuggestions, setShowProductSuggestions] = useState(false);
+
+  const calculatedOriginalPrice = useMemo(() => {
+    return packItemsList.reduce((sum, item) => {
+      const prod = products.find(p => p.name.trim().toLowerCase() === item.name.trim().toLowerCase());
+      return sum + (prod ? prod.price * item.quantity : 0);
+    }, 0);
+  }, [packItemsList, products]);
+
+  const discountPercentage = useMemo(() => {
+    if (calculatedOriginalPrice <= 0) return 0;
+    if (packPrice >= calculatedOriginalPrice) return 0;
+    return Math.round(((calculatedOriginalPrice - packPrice) / calculatedOriginalPrice) * 100);
+  }, [calculatedOriginalPrice, packPrice]);
 
   // --- CATEGORY FORM STATES ---
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -207,6 +223,43 @@ export default function AdminDashboard({
       .reduce((sum, o) => sum + o.total, 0);
   }, [orders]);
 
+  const totalProfit = useMemo(() => {
+    return orders
+      .filter(o => o.status === 'delivered')
+      .reduce((sum, o) => {
+        const orderProfit = o.items.reduce((itemSum, item) => {
+          const sellPrice = item.product.price;
+          const activeProd = products.find(p => p.id === item.product.id) || packs.find(p => p.id === item.product.id);
+          const purchasePrice = activeProd?.purchasePrice !== undefined
+            ? activeProd.purchasePrice
+            : item.product.purchasePrice !== undefined
+              ? item.product.purchasePrice
+              : Math.round(sellPrice * 0.8);
+          
+          return itemSum + (sellPrice - purchasePrice) * item.quantity;
+        }, 0);
+        return sum + orderProfit;
+      }, 0);
+  }, [orders, products, packs]);
+
+  const totalExpectedProfit = useMemo(() => {
+    return orders
+      .reduce((sum, o) => {
+        const orderProfit = o.items.reduce((itemSum, item) => {
+          const sellPrice = item.product.price;
+          const activeProd = products.find(p => p.id === item.product.id) || packs.find(p => p.id === item.product.id);
+          const purchasePrice = activeProd?.purchasePrice !== undefined
+            ? activeProd.purchasePrice
+            : item.product.purchasePrice !== undefined
+              ? item.product.purchasePrice
+              : Math.round(sellPrice * 0.8);
+          
+          return itemSum + (sellPrice - purchasePrice) * item.quantity;
+        }, 0);
+        return sum + orderProfit;
+      }, 0);
+  }, [orders, products, packs]);
+
   const stats = useMemo(() => {
     const pendingOrders = orders.filter(o => o.status === 'pending').length;
     const confirmedOrders = orders.filter(o => o.status === 'confirmed').length;
@@ -264,6 +317,7 @@ export default function AdminDashboard({
         name: prodName,
         description: prodDesc,
         price: prodPrice,
+        purchasePrice: prodPurchasePrice,
         image: finalImage,
         category: prodCategory,
         brand: prodBrand,
@@ -281,6 +335,7 @@ export default function AdminDashboard({
         name: prodName,
         description: prodDesc,
         price: prodPrice,
+        purchasePrice: prodPurchasePrice,
         image: finalImage,
         category: prodCategory || categories[0]?.id || 'bags',
         rating: 5.0,
@@ -301,6 +356,7 @@ export default function AdminDashboard({
     setProdName('');
     setProdDesc('');
     setProdPrice(1000);
+    setProdPurchasePrice(800);
     setProdImage('');
     setProdCategory(categories[0]?.id || 'bags');
     setProdBrand('');
@@ -315,6 +371,7 @@ export default function AdminDashboard({
     setProdName(p.name);
     setProdDesc(p.description);
     setProdPrice(p.price);
+    setProdPurchasePrice(p.purchasePrice !== undefined ? p.purchasePrice : Math.round(p.price * 0.8));
     setProdImage(p.image);
     setProdCategory(p.category);
     setProdBrand(p.brand || '');
@@ -478,8 +535,39 @@ export default function AdminDashboard({
     setTempToolQty(1);
   };
 
+  const handleDirectAddTool = (toolName: string) => {
+    const trimmed = toolName.trim();
+    if (!trimmed) return;
+    
+    const existingIndex = packItemsList.findIndex(
+      item => item.name.trim().toLowerCase() === trimmed.toLowerCase()
+    );
+    
+    if (existingIndex !== -1) {
+      const updated = [...packItemsList];
+      updated[existingIndex] = {
+        ...updated[existingIndex],
+        quantity: updated[existingIndex].quantity + 1
+      };
+      setPackItemsList(updated);
+    } else {
+      const newItem = {
+        id: 'tool-' + Date.now() + Math.random().toString(36).substr(2, 4),
+        name: trimmed,
+        quantity: 1
+      };
+      setPackItemsList([...packItemsList, newItem]);
+    }
+    setTempToolName('');
+    setShowProductSuggestions(false);
+  };
+
   const handleRemoveToolRow = (id: string) => {
     setPackItemsList(packItemsList.filter(item => item.id !== id));
+  };
+
+  const handleUpdateToolQty = (id: string, newQty: number) => {
+    setPackItemsList(prev => prev.map(item => item.id === id ? { ...item, quantity: Math.max(1, newQty) } : item));
   };
 
   // Category Edit Save
@@ -669,7 +757,7 @@ export default function AdminDashboard({
           {activeTab === 'overview' && (
             <div className="space-y-8 text-right">
               {/* Main Bento Cards Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                 <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 relative overflow-hidden shadow">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400 text-xs font-black">إجمالي إيرادات المتجر</span>
@@ -677,6 +765,17 @@ export default function AdminDashboard({
                   </div>
                   <h3 className="text-xl sm:text-2xl font-black mt-3 text-emerald-400">{formatPrice(totalRevenue)}</h3>
                   <p className="text-[10px] text-slate-500 mt-1 font-semibold">من الطلبيات المستلمة والمسلمة بالكامل</p>
+                </div>
+
+                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 relative overflow-hidden shadow">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400 text-xs font-black">صافي الأرباح المحصلة</span>
+                    <span className="p-2 bg-teal-500/10 text-teal-500 rounded-xl"><TrendingUp className="h-5 w-5" /></span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black mt-3 text-teal-400">{formatPrice(totalProfit)}</h3>
+                  <p className="text-[10px] text-slate-400 mt-1 font-bold">
+                    الربح المتوقع الإجمالي: <span className="text-white font-mono">{formatPrice(totalExpectedProfit)}</span>
+                  </p>
                 </div>
 
                 <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 relative overflow-hidden shadow">
@@ -788,15 +887,59 @@ export default function AdminDashboard({
                       />
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-400">السعر بالدينار الجزائري (د.ج)</label>
-                      <input
-                        type="number"
-                        required
-                        value={prodPrice}
-                        onChange={(e) => setProdPrice(Number(e.target.value))}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-semibold focus:outline-none focus:border-brand-blue text-right text-white"
-                      />
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-400">سعر الشراء (دج)</label>
+                        <input
+                          type="number"
+                          required
+                          value={prodPurchasePrice}
+                          onChange={(e) => setProdPurchasePrice(Number(e.target.value))}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-semibold focus:outline-none focus:border-brand-blue text-right text-white"
+                          placeholder="مثال: 800"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-400">سعر البيع (دج)</label>
+                        <input
+                          type="number"
+                          required
+                          value={prodPrice}
+                          onChange={(e) => setProdPrice(Number(e.target.value))}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-semibold focus:outline-none focus:border-brand-blue text-right text-white"
+                          placeholder="مثال: 1000"
+                        />
+                      </div>
+
+                      {/* حساب الربح تلقائياً */}
+                      {(() => {
+                        const profit = (Number(prodPrice) || 0) - (Number(prodPurchasePrice) || 0);
+                        const isLoss = profit < 0;
+                        return (
+                          <div 
+                            className={`p-3.5 rounded-xl border flex items-center justify-between text-xs font-bold transition-all duration-200 ${
+                              isLoss 
+                                ? 'bg-red-500/10 border-red-500/20 text-red-400' 
+                                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {isLoss ? (
+                                <AlertTriangle className="h-4 w-4 text-red-500 animate-pulse shrink-0" />
+                              ) : (
+                                <TrendingUp className="h-4 w-4 text-emerald-500 shrink-0" />
+                              )}
+                              <span>
+                                {isLoss ? 'خسارة متوقعة' : 'الربح المتوقع'}
+                              </span>
+                            </div>
+                            <span className="text-sm font-black font-mono">
+                              الربح: {profit} دج
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="space-y-1.5">
@@ -1440,70 +1583,142 @@ export default function AdminDashboard({
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Column 1: Image Upload and Preview */}
-                    <div className="space-y-4">
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-bold text-slate-400">رابط صورة الباك</label>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const converted = convertGoogleDriveUrl(packImage);
-                              if (converted !== packImage) {
-                                setPackImage(converted);
-                                triggerNoti('تم تحويل رابط Google Drive بنجاح!');
-                              } else {
-                                triggerNoti('الرابط لا يبدو كرابط Google Drive مشارك أو غير متوافق', 'info');
+                  {/* Image Link Input - Full Width across the entire container */}
+                  <div className="w-full">
+                    <input
+                      type="url"
+                      required
+                      placeholder="رابط صورة الباك المدرسي (مثال: https://example.com/image.jpg)"
+                      value={packImage}
+                      onChange={(e) => setPackImage(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-bold text-white text-right placeholder-slate-600 focus:border-brand-blue focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Column 2: Pack Items Manager */}
+                    <div className="space-y-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-850">
+                      <h5 className="text-xs font-black text-white border-b border-slate-800 pb-2">📦 قائمة الأدوات داخل هذا الباك ({packItemsList.length})</h5>
+                      
+                      {/* Add Item Form Row */}
+                      <div className="space-y-2 pt-1 text-right">
+                        <label className="block text-[11px] font-bold text-slate-400">إضافة أداة جديدة لمحتويات الباك</label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="ابحث أو اكتب اسم الأداة واضغط Enter للإضافة"
+                            value={tempToolName}
+                            onChange={(e) => {
+                              setTempToolName(e.target.value);
+                              setShowProductSuggestions(true);
+                            }}
+                            onFocus={() => setShowProductSuggestions(true)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (tempToolName.trim()) {
+                                  handleDirectAddTool(tempToolName);
+                                }
                               }
                             }}
-                            className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[10px] text-brand-blue font-bold px-3 py-2 rounded-xl transition-all shrink-0 cursor-pointer"
-                          >
-                            تحويل درايف
-                          </button>
-                          <input
-                            type="url"
-                            required
-                            placeholder="https://example.com/image.jpg"
-                            value={packImage}
-                            onChange={(e) => setPackImage(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-xs font-semibold text-white text-right"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 text-[11px] font-semibold text-white text-right focus:border-brand-blue focus:outline-none"
                           />
+                          {showProductSuggestions && (
+                            <>
+                              {/* Overlay to dismiss dropdown when clicking outside */}
+                              <div 
+                                className="fixed inset-0 z-40" 
+                                onClick={() => setShowProductSuggestions(false)}
+                              />
+                              <div className="absolute right-0 top-full mt-1.5 w-full bg-slate-950 border-2 border-slate-800 rounded-2xl shadow-2xl z-50 max-h-[360px] overflow-y-auto divide-y divide-slate-900 text-right">
+                                {products.filter(p => {
+                                  if (!tempToolName.trim()) return true;
+                                  return p.name.toLowerCase().includes(tempToolName.toLowerCase());
+                                }).length === 0 ? (
+                                  <div className="p-4 text-xs text-slate-500 text-center font-bold">
+                                    لا توجد منتجات تطابق البحث
+                                  </div>
+                                ) : (
+                                  products.filter(p => {
+                                    if (!tempToolName.trim()) return true;
+                                    return p.name.toLowerCase().includes(tempToolName.toLowerCase());
+                                  }).map((p) => (
+                                    <button
+                                      key={p.id}
+                                      type="button"
+                                      onClick={() => {
+                                        handleDirectAddTool(p.name);
+                                      }}
+                                      className="w-full p-3 hover:bg-slate-900/80 flex items-center justify-between gap-3 text-xs font-bold text-slate-300 hover:text-white transition-all text-right"
+                                    >
+                                      <span className="font-mono text-brand-blue text-[11px] sm:text-xs shrink-0 font-extrabold">{formatPrice(p.price)}</span>
+                                      <div className="flex items-center gap-3 max-w-[80%] text-right justify-end">
+                                        <span className="truncate text-[11px] sm:text-xs text-slate-200">{p.name}</span>
+                                        <img 
+                                          src={getCompatibleImageUrl(p.image)} 
+                                          alt={p.name} 
+                                          className="h-8 w-8 rounded-lg object-cover border border-slate-800 shrink-0 shadow-sm" 
+                                          referrerPolicy="no-referrer"
+                                        />
+                                      </div>
+                                    </button>
+                                  ))
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
-                        <p className="text-[10px] text-slate-500 font-bold leading-normal text-right">رابط Unsplash أو صورة مستضافة في Google Drive مشاركة علناً.</p>
                       </div>
 
-                      {/* Image Preview Card */}
-                      <div className="bg-slate-900 border border-slate-850 rounded-2xl p-4 flex flex-col items-center justify-center min-h-48 text-center relative overflow-hidden">
-                        {packImage ? (
-                          <>
-                            <img
-                              src={getCompatibleImageUrl(packImage)}
-                              alt="معاينة الباك"
-                              className="max-h-40 max-w-full object-contain rounded-xl mix-blend-screen"
-                              referrerPolicy="no-referrer"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setPackImage('')}
-                              className="absolute top-2 right-2 bg-slate-950/80 p-1.5 rounded-full text-red-500 hover:bg-slate-950 hover:text-red-400 transition-all text-xs cursor-pointer"
-                            >
-                              إزالة 🗑️
-                            </button>
-                          </>
+                      {/* Items List Table */}
+                      <div className="space-y-2.5 max-h-96 overflow-y-auto pl-1">
+                        {packItemsList.length === 0 ? (
+                          <p className="text-xs text-slate-500 font-bold text-center py-8">الباك فارغ حالياً. يرجى إضافة الأدوات أعلاه.</p>
                         ) : (
-                          <div className="space-y-2 text-slate-500 p-4">
-                            <Sparkles className="h-8 w-8 mx-auto animate-pulse text-brand-blue" />
-                            <p className="text-xs font-bold">لا توجد صورة مضافة</p>
-                            <p className="text-[10px]">سيتم عرض المعاينة هنا بمجرد إدخال رابط الصورة.</p>
-                          </div>
+                          packItemsList.map((item) => (
+                            <div key={item.id} className="bg-slate-950 border border-slate-850 p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md text-sm transition-all hover:border-slate-800">
+                              <span className="truncate text-slate-100 font-black text-right">{item.name}</span>
+                              <div className="flex items-center gap-3 shrink-0 justify-end w-full sm:w-auto">
+                                <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl px-1.5 py-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateToolQty(item.id, item.quantity + 1)}
+                                    className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all"
+                                  >
+                                    <Plus className="h-3.5 w-3.5" />
+                                  </button>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={item.quantity}
+                                    onChange={(e) => handleUpdateToolQty(item.id, Number(e.target.value) || 1)}
+                                    className="w-8 bg-transparent text-center font-mono text-xs font-black text-white focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateToolQty(item.id, Math.max(1, item.quantity - 1))}
+                                    className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all"
+                                  >
+                                    <Minus className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                                <span className="text-[10px] text-slate-400 font-bold">حبة</span>
+                                <div className="h-4 w-[1px] bg-slate-800 mx-1 hidden sm:block" />
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveToolRow(item.id)}
+                                  className="text-xs text-rose-500 hover:text-rose-400 font-black cursor-pointer hover:scale-105 transition-all"
+                                >
+                                  إزالة
+                                </button>
+                              </div>
+                            </div>
+                          ))
                         )}
                       </div>
-
-
                     </div>
 
-                    {/* Column 2: Details fields */}
+                    {/* Column 3: Details fields */}
                     <div className="space-y-4">
                       <div className="space-y-1.5">
                         <label className="block text-xs font-bold text-slate-400">اسم الباك المدرسي (مكتمل الأدوات)</label>
@@ -1531,28 +1746,46 @@ export default function AdminDashboard({
 
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                          <label className="block text-xs font-bold text-slate-400">السعر الإجمالي للباك (د.ج)</label>
+                          <label className="block text-xs font-bold text-slate-400">السعر الإجمالي للقطع (تلقائي)</label>
+                          <div className="w-full bg-slate-950/60 border border-slate-850 rounded-xl py-2.5 px-4 text-xs font-black text-brand-blue text-right select-none">
+                            {formatPrice(calculatedOriginalPrice)}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-bold text-slate-300">سعر العرض للباك (د.ج)</label>
                           <input
                             type="number"
                             required
                             min="1"
                             value={packPrice}
                             onChange={(e) => setPackPrice(Number(e.target.value))}
-                            className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-black text-white text-right"
+                            className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-black text-white text-right focus:border-brand-blue focus:outline-none"
+                            placeholder="سعر البيع النهائي"
                           />
                         </div>
+                      </div>
 
-                        <div className="space-y-1.5">
-                          <label className="block text-xs font-bold text-slate-400">تصنيف الفئة الرئيسية للباك</label>
-                          <select
-                            value={packCategory}
-                            onChange={(e) => setPackCategory(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-3 text-xs font-bold text-white text-right"
-                          >
-                            {categories.map((c) => (
-                              <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                          </select>
+                      {/* نسبة التخفيض وتحليل السعر */}
+                      <div className="bg-slate-950 border border-slate-850 rounded-2xl p-3.5 flex items-center justify-between text-right">
+                        <div className="flex items-center gap-1.5">
+                          {discountPercentage > 0 ? (
+                            <span className="bg-red-500/10 text-red-400 text-xs font-black px-3 py-1 rounded-xl border border-red-500/20 animate-pulse">
+                              خصم {discountPercentage}% 🔥
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 text-xs font-bold bg-slate-900 border border-slate-850 px-2.5 py-1 rounded-lg">
+                              لا يوجد تخفيض بعد
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-500 font-bold block">مجموع التوفير للأولياء:</span>
+                          <span className="text-xs font-black text-brand-blue">
+                            {calculatedOriginalPrice > packPrice 
+                              ? formatPrice(calculatedOriginalPrice - packPrice) 
+                              : '0 د.ج'}
+                          </span>
                         </div>
                       </div>
 
@@ -1565,64 +1798,6 @@ export default function AdminDashboard({
                           onChange={(e) => setPackFeaturesText(e.target.value)}
                           className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-bold text-white text-right"
                         />
-                      </div>
-                    </div>
-
-                    {/* Column 3: Pack Items Manager */}
-                    <div className="space-y-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-850">
-                      <h5 className="text-xs font-black text-white border-b border-slate-800 pb-2">📦 قائمة الأدوات داخل هذا الباك ({packItemsList.length})</h5>
-                      
-                      {/* Add Item Form Row */}
-                      <div className="space-y-2 pt-1 text-right">
-                        <label className="block text-[11px] font-bold text-slate-400">إضافة أداة جديدة لمحتويات الباك</label>
-                        <div className="grid grid-cols-12 gap-2">
-                          <input
-                            type="text"
-                            placeholder="اسم الأداة (مثل كراس 96)"
-                            value={tempToolName}
-                            onChange={(e) => setTempToolName(e.target.value)}
-                            className="col-span-8 bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 text-[11px] font-semibold text-white text-right"
-                          />
-                          <input
-                            type="number"
-                            min="1"
-                            value={tempToolQty}
-                            onChange={(e) => setTempToolQty(Number(e.target.value) || 1)}
-                            className="col-span-4 bg-slate-950 border border-slate-800 rounded-lg py-2 px-2 text-[11px] font-bold text-white text-center"
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleAddToolRow}
-                          className="w-full bg-slate-850 hover:bg-brand-blue text-slate-200 hover:text-white py-2 rounded-xl text-[11px] font-black transition-all cursor-pointer mt-1"
-                        >
-                          ➕ أدرج الأداة ضمن الباك
-                        </button>
-                      </div>
-
-                      {/* Items List Table */}
-                      <div className="space-y-2 max-h-56 overflow-y-auto pl-1">
-                        {packItemsList.length === 0 ? (
-                          <p className="text-[10px] text-slate-500 font-bold text-center py-6">الباك فارغ حالياً. يرجى إضافة الأدوات أعلاه.</p>
-                        ) : (
-                          packItemsList.map((item) => (
-                            <div key={item.id} className="bg-slate-950 border border-slate-850 p-2.5 rounded-xl flex items-center justify-between gap-2 shadow-sm text-xs">
-                              <span className="truncate text-slate-300 font-semibold">{item.name}</span>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className="bg-brand-blue/20 text-brand-blue font-black px-2 py-0.5 rounded-md text-[10px]">
-                                  {item.quantity} حبة
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveToolRow(item.id)}
-                                  className="text-[10px] text-rose-500 hover:text-rose-400 hover:underline font-bold cursor-pointer"
-                                >
-                                  إزالة
-                                </button>
-                              </div>
-                            </div>
-                          ))
-                        )}
                       </div>
                     </div>
                   </div>
