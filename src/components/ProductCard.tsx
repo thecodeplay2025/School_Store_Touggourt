@@ -10,13 +10,15 @@ interface ProductCardProps {
   onAddToCart: (p: Product) => void;
   onAddToWishlist: (p: Product) => void;
   isWishlisted: boolean;
+  onClick?: (p: Product) => void;
 }
 
 export default function ProductCard({
   product,
   onAddToCart,
   onAddToWishlist,
-  isWishlisted
+  isWishlisted,
+  onClick
 }: ProductCardProps) {
   
   // Format price helper
@@ -38,7 +40,8 @@ export default function ProductCard({
   return (
     <motion.div
       whileHover={{ y: -6 }}
-      className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm hover:shadow-lg overflow-hidden flex flex-col justify-between h-full group transition-all duration-300"
+      onClick={() => onClick && onClick(product)}
+      className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm hover:shadow-lg overflow-hidden flex flex-col justify-between h-full group transition-all duration-300 cursor-pointer"
     >
       
       {/* Top half: Product Image Container */}

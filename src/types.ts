@@ -10,6 +10,7 @@ export interface Product {
   description: string;
   price: number; // in DZD
   purchasePrice?: number; // in DZD
+  stockQuantity?: number; // in stock quantity
   image: string;
   category: string;
   rating: number;

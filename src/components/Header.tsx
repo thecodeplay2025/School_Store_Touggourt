@@ -14,6 +14,7 @@ import {
   Home
 } from 'lucide-react';
 import { CartItem, User } from '../types';
+import midadLogo from '../assets/images/midad_brand_logo_1783602520157.jpg';
 
 interface HeaderProps {
   cart: CartItem[];
@@ -94,18 +95,21 @@ export default function Header({
                 onNavigateView?.('home');
                 window.location.hash = '';
               }} 
-              className="flex items-center gap-1.5 sm:gap-2 group text-right"
+              className="flex items-center gap-2 sm:gap-2.5 group text-right"
               id="logo-button"
             >
-              <div className="bg-brand-blue text-white p-2 sm:p-2.5 rounded-xl shadow-md group-hover:bg-blue-700 transition-colors">
-                <GraduationCap className="h-5 w-5 sm:h-6 sm:w-6" />
-              </div>
+              <img 
+                src={midadLogo} 
+                alt="midad logo" 
+                className="w-14 h-14 sm:w-16 sm:h-16 object-contain rounded-none bg-white p-1 shrink-0" 
+                referrerPolicy="no-referrer" 
+              />
               <div className="text-right">
-                <span className="text-base sm:text-xl font-extrabold text-slate-900 tracking-tight leading-none block font-sans">
-                  School Store
+                <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-none block font-sans">
+                  midad
                 </span>
-                <span className="text-[9px] sm:text-[11px] font-bold text-brand-blue tracking-wide uppercase hidden min-[370px]:block mt-0.5 sm:mt-1">
-                  Touggourt • توقرت
+                <span className="text-[10px] sm:text-[11px] font-bold text-brand-blue tracking-wide uppercase hidden min-[370px]:block mt-0.5 sm:mt-1">
+                  مداد • مكتبة وأدوات مدرسية
                 </span>
               </div>
             </button>
@@ -238,12 +242,15 @@ export default function Header({
               {/* Drawer Header */}
               <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-white z-10 shrink-0">
                 <div className="flex items-center gap-2">
-                  <div className="bg-brand-blue text-white p-2 rounded-lg">
-                    <GraduationCap className="h-5 w-5" />
-                  </div>
+                  <img 
+                    src={midadLogo} 
+                    alt="midad logo" 
+                    className="w-14 h-14 object-contain rounded-none bg-white p-1 shrink-0" 
+                    referrerPolicy="no-referrer" 
+                  />
                   <div>
-                    <h2 className="text-base font-black text-slate-900 leading-none">School Store</h2>
-                    <span className="text-[9px] font-bold text-brand-blue">Touggourt • القائمة</span>
+                    <h2 className="text-base font-black text-slate-900 leading-none">midad | مداد</h2>
+                    <span className="text-[9px] font-bold text-brand-blue">القائمة الرئيسية</span>
                   </div>
                 </div>
                 <button

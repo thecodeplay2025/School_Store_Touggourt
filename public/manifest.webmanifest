@@ -1,7 +1,7 @@
 {
-  "name": "School Store Touggourt | متجر المستلزمات المدرسية",
-  "short_name": "School Store",
-  "description": "متجر إلكتروني لبيع الأدوات المدرسية، الدفاتر، الأقلام، الحقائب، مع توصيل سريع في ولاية توقرت.",
+  "name": "midad | مداد - متجر المستلزمات المدرسية",
+  "short_name": "midad",
+  "description": "متجر مداد (midad) الإلكتروني لبيع الأدوات المدرسية، الدفاتر، الأقلام، الحقائب، مع توصيل سريع في ولاية توقرت.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",

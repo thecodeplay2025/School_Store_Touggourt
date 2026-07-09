@@ -66,7 +66,7 @@ export default function FAQView() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-12 text-right" dir="rtl">
       <Helmet>
-        <title>الأسئلة الشائعة والجواب الشافي | School Store Touggourt</title>
+        <title>الأسئلة الشائعة والجواب الشافي | midad - مداد</title>
         <meta name="description" content="إليك كافة الأجوبة حول توصيل الأدوات المدرسية والباكات بولاية توقرت، طرق الدفع، جودة المنتجات، وإجراءات الطلب السريع." />
         <link rel="canonical" href={`${window.location.origin}/faq`} />
         <script type="application/ld+json">

@@ -13,7 +13,7 @@ export default function InfoPagesView({ pageType, onGoHome }: InfoPagesViewProps
     switch (pageType) {
       case 'privacy':
         return {
-          title: 'سياسة الخصوصية وسرية المعلومات | School Store Touggourt',
+          title: 'سياسة الخصوصية وسرية المعلومات | midad - مداد',
           description: 'نلتزم بحماية خصوصية بياناتكم بشكل كامل. تعرف على كيفية جمع ومعالجة معلومات الطلبات والتوصيل لزبائننا الكرام بولاية توقرت.',
           canonical: '/privacy',
           icon: <Shield className="h-7 w-7 text-emerald-600" />,
@@ -22,7 +22,7 @@ export default function InfoPagesView({ pageType, onGoHome }: InfoPagesViewProps
           content: (
             <div className="space-y-6 text-slate-700 font-medium leading-relaxed text-xs sm:text-sm">
               <p>
-                مرحباً بكم في <strong>School Store Touggourt</strong>. نحن نولي سرية وأمان معلوماتكم الشخصية أهمية قصوى ونلتزم بحمايتها وفقاً لأعلى معايير الأمان الرقمي واللوجستي.
+                مرحباً بكم في <strong>midad | مداد</strong>. نحن نولي سرية وأمان معلوماتكم الشخصية أهمية قصوى ونلتزم بحمايتها وفقاً لأعلى معايير الأمان الرقمي واللوجستي.
               </p>
 
               <h2 className="text-base sm:text-lg font-black text-slate-900 border-r-4 border-emerald-500 pr-3 mt-4">1. المعلومات التي نجمعها</h2>
@@ -62,7 +62,7 @@ export default function InfoPagesView({ pageType, onGoHome }: InfoPagesViewProps
 
       case 'terms':
         return {
-          title: 'شروط وأحكام الاستخدام والطلب | School Store Touggourt',
+          title: 'شروط وأحكام الاستخدام والطلب | midad - مداد',
           description: 'الشروط والأحكام المنظمة لعمليات تصفح متجر الأدوات المدرسية والباكات وشروط تأكيد ورفض الطلبات في ولاية توقرت.',
           canonical: '/terms',
           icon: <FileText className="h-7 w-7 text-blue-600" />,
@@ -71,7 +71,7 @@ export default function InfoPagesView({ pageType, onGoHome }: InfoPagesViewProps
           content: (
             <div className="space-y-6 text-slate-700 font-medium leading-relaxed text-xs sm:text-sm">
               <p>
-                باستخدامكم لمتجر <strong>School Store Touggourt</strong> وتأكيد طلباتكم من خلاله، فإنكم توافقون بالكامل على الالتزام بالشروط والأحكام المنظمة للخدمة الموضحة أدناه.
+                باستخدامكم لمتجر <strong>midad | مداد</strong> وتأكيد طلباتكم من خلاله، فإنكم توافقون بالكامل على الالتزام بالشروط والأحكام المنظمة للخدمة الموضحة أدناه.
               </p>
 
               <h2 className="text-base sm:text-lg font-black text-slate-900 border-r-4 border-blue-500 pr-3 mt-4">1. أهلية الطلب وتأكيده</h2>
@@ -100,7 +100,7 @@ export default function InfoPagesView({ pageType, onGoHome }: InfoPagesViewProps
       case 'shipping':
       default:
         return {
-          title: 'سياسة الشحن والتوصيل والإرجاع | School Store Touggourt',
+          title: 'سياسة الشحن والتوصيل والإرجاع | midad - مداد',
           description: 'تفاصيل شحن الأدوات المدرسية والباكات لكافة بلديات ولاية توقرت، مدة التوصيل القياسية وسياسة استبدال المنتجات التالفة.',
           canonical: '/shipping',
           icon: <Truck className="h-7 w-7 text-indigo-600" />,
@@ -166,7 +166,7 @@ export default function InfoPagesView({ pageType, onGoHome }: InfoPagesViewProps
           {config.heading}
         </h1>
         <p className="text-slate-400 font-bold text-[10px] sm:text-xs tracking-wide">
-          School Store Touggourt • متجر المستلزمات المدرسية بتوقرت
+          midad | مداد • متجر المستلزمات المدرسية
         </p>
       </div>
 

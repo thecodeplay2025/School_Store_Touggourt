@@ -10,7 +10,7 @@ export default function NotFoundView({ onGoHome }: NotFoundViewProps) {
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 py-16 bg-slate-50 text-right" dir="rtl">
       <Helmet>
-        <title>الصفحة غير موجودة | School Store Touggourt</title>
+        <title>الصفحة غير موجودة | midad - مداد</title>
         <meta name="description" content="عذراً، الصفحة التي تبحث عنها غير موجودة أو تم نقلها." />
         <meta name="robots" content="noindex, follow" />
       </Helmet>

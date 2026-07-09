@@ -64,7 +64,7 @@ export default function AuthView({ onAuthSuccess, onClose }: AuthViewProps) {
           تسجيل دخول الإدارة والمسؤولين
         </h3>
         <p className="text-xs text-slate-500 mt-1.5 font-medium leading-relaxed">
-          هذه البوابة مخصصة فقط لمدير ومسؤولي متجر School Store لإدارة المخزون وتتبع الطلبات وتحديث الأسعار بولاية توقرت.
+          هذه البوابة مخصصة فقط لمدير ومسؤولي متجر midad (مداد) لإدارة المخزون وتتبع الطلبات وتحديث الأسعار بولاية توقرت.
         </p>
       </div>
 

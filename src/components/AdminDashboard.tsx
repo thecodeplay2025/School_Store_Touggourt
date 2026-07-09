@@ -48,6 +48,8 @@ interface AdminDashboardProps {
   reviews: Review[];
   siteSettings: SiteSettings;
   packs: Product[];
+  visitorsCount: number;
+  onUpdateVisitorsCount: (count: number) => void;
   onUpdatePacks: (packs: Product[]) => void;
   
   onUpdateProducts: (products: Product[]) => void;
@@ -79,6 +81,8 @@ export default function AdminDashboard({
   reviews,
   siteSettings,
   packs,
+  visitorsCount,
+  onUpdateVisitorsCount,
   onUpdatePacks,
   onUpdateProducts,
   onUpdateCategories,
@@ -90,7 +94,7 @@ export default function AdminDashboard({
   onLogout,
   formatPrice
 }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'categories' | 'orders' | 'customers' | 'shipping' | 'offers' | 'reviews' | 'settings' | 'packs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'categories' | 'orders' | 'customers' | 'shipping' | 'offers' | 'reviews' | 'settings' | 'packs' | 'sales_stats'>('overview');
   
   // Selected Order for details modal
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -105,6 +109,11 @@ export default function AdminDashboard({
 
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Sales statistics search and sorting state
+  const [salesSearchTerm, setSalesSearchTerm] = useState('');
+  const [salesSortKey, setSalesSortKey] = useState<'name' | 'unitsSold' | 'buyers' | 'totalRevenue'>('unitsSold');
+  const [salesSortOrder, setSalesSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Notifications
   const [noti, setNoti] = useState<{ msg: string; type: 'success' | 'info' } | null>(null);
@@ -120,6 +129,7 @@ export default function AdminDashboard({
   const [prodDesc, setProdDesc] = useState('');
   const [prodPrice, setProdPrice] = useState(1000);
   const [prodPurchasePrice, setProdPurchasePrice] = useState(800);
+  const [prodStockQuantity, setProdStockQuantity] = useState<number>(10);
   const [prodImage, setProdImage] = useState('');
   const [prodCategory, setProdCategory] = useState(categories[0]?.id || 'bags');
   const [prodBrand, setProdBrand] = useState('');
@@ -181,40 +191,158 @@ export default function AdminDashboard({
   const [setThreshold, setSetThreshold] = useState(siteSettings.freeShippingThreshold);
   const [setBannerText, setSetBannerText] = useState(siteSettings.promoBannerText);
 
-  // --- VISITORS TRACKING STATE ---
-  const [visitorsCount, setVisitorsCount] = useState<number>(() => {
-    const saved = localStorage.getItem('site_visitors_count');
-    if (saved) {
-      const num = parseInt(saved, 10);
-      return isNaN(num) ? 4850 : num;
-    }
-    return 4850;
-  });
+  // --- SALES STATISTICS COMPUTATIONS ---
+  const processedStats = useMemo(() => {
+    const statsMap: Record<string, { 
+      id: string;
+      name: string; 
+      image: string; 
+      category: string;
+      isPack: boolean;
+      price: number;
+      unitsSold: number; 
+      buyers: Set<string>;
+    }> = {};
 
-  useEffect(() => {
-    // Increment count by 1 on dashboard mount (simulating new session/load activity)
-    setVisitorsCount(prev => {
-      const next = prev + 1;
-      localStorage.setItem('site_visitors_count', next.toString());
-      return next;
+    // Initialize with all existing products
+    products.forEach(p => {
+      statsMap[p.name] = {
+        id: p.id,
+        name: p.name,
+        image: p.image,
+        category: p.category,
+        isPack: false,
+        price: p.price,
+        unitsSold: 0,
+        buyers: new Set<string>()
+      };
     });
 
-    // Simulate active, real-time visitors ticking up every few seconds
-    const interval = setInterval(() => {
-      setVisitorsCount(prev => {
-        // Occasionally add 1 or 2 new visitors randomly
-        const increment = Math.random() > 0.55 ? (Math.random() > 0.8 ? 2 : 1) : 0;
-        if (increment > 0) {
-          const next = prev + increment;
-          localStorage.setItem('site_visitors_count', next.toString());
-          return next;
-        }
-        return prev;
-      });
-    }, 4500);
+    // Initialize with all existing packs
+    packs.forEach(p => {
+      statsMap[p.name] = {
+        id: p.id,
+        name: p.name,
+        image: p.image,
+        category: p.category,
+        isPack: true,
+        price: p.price,
+        unitsSold: 0,
+        buyers: new Set<string>()
+      };
+    });
 
-    return () => clearInterval(interval);
-  }, []);
+    // Aggregate from all actual orders
+    orders.forEach(order => {
+      const customerId = order.phone.trim() || order.customerName.trim();
+      if (order.items && Array.isArray(order.items)) {
+        order.items.forEach(item => {
+          if (!item || !item.product) return;
+          const p = item.product;
+          const qty = item.quantity || 0;
+          
+          if (!statsMap[p.name]) {
+            statsMap[p.name] = {
+              id: p.id,
+              name: p.name,
+              image: p.image,
+              category: p.category || 'other',
+              isPack: !!p.isPack,
+              price: p.price,
+              unitsSold: 0,
+              buyers: new Set<string>()
+            };
+          }
+          
+          statsMap[p.name].unitsSold += qty;
+          if (customerId) {
+            statsMap[p.name].buyers.add(customerId);
+          }
+        });
+      }
+    });
+
+    // Map to array with computed fields
+    let result = Object.values(statsMap).map(item => ({
+      ...item,
+      uniqueBuyersCount: item.buyers.size,
+      totalRevenue: item.unitsSold * item.price
+    }));
+
+    // Filter by search term
+    if (salesSearchTerm.trim()) {
+      const term = salesSearchTerm.toLowerCase();
+      result = result.filter(item => 
+        item.name.toLowerCase().includes(term) ||
+        item.category.toLowerCase().includes(term)
+      );
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      let valA: any;
+      let valB: any;
+
+      if (salesSortKey === 'name') {
+        valA = a.name;
+        valB = b.name;
+        return salesSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      } else if (salesSortKey === 'buyers') {
+        valA = a.uniqueBuyersCount;
+        valB = b.uniqueBuyersCount;
+      } else if (salesSortKey === 'totalRevenue') {
+        valA = a.totalRevenue;
+        valB = b.totalRevenue;
+      } else {
+        valA = a.unitsSold;
+        valB = b.unitsSold;
+      }
+
+      return salesSortOrder === 'asc' ? valA - valB : valB - valA;
+    });
+
+    return result;
+  }, [orders, products, packs, salesSearchTerm, salesSortKey, salesSortOrder]);
+
+  const salesSummary = useMemo(() => {
+    let totalUnitsSold = 0;
+    const bestSellerMap: Record<string, number> = {};
+    const allUniqueBuyers = new Set<string>();
+
+    orders.forEach(order => {
+      const customerId = order.phone.trim() || order.customerName.trim();
+      if (customerId) {
+        allUniqueBuyers.add(customerId);
+      }
+
+      if (order.items && Array.isArray(order.items)) {
+        order.items.forEach(item => {
+          if (!item || !item.product) return;
+          const p = item.product;
+          const qty = item.quantity || 0;
+          totalUnitsSold += qty;
+
+          bestSellerMap[p.name] = (bestSellerMap[p.name] || 0) + qty;
+        });
+      }
+    });
+
+    // Find best-selling product
+    let bestSellerName = 'لا يوجد';
+    let bestSellerQty = 0;
+    Object.entries(bestSellerMap).forEach(([name, qty]) => {
+      if (qty > bestSellerQty) {
+        bestSellerName = name;
+        bestSellerQty = qty;
+      }
+    });
+
+    return {
+      totalUnitsSold,
+      bestSeller: { name: bestSellerName, unitsSold: bestSellerQty },
+      uniqueBuyersCount: allUniqueBuyers.size
+    };
+  }, [orders]);
 
   // --- STATS COMPUTATIONS ---
   const totalRevenue = useMemo(() => {
@@ -277,6 +405,31 @@ export default function AdminDashboard({
     };
   }, [orders, products, users]);
 
+  // --- INVENTORY STATS COMPUTATIONS ---
+  const inventoryStats = useMemo(() => {
+    let totalPurchaseCost = 0;
+    let totalPotentialRevenue = 0;
+    let totalPotentialProfit = 0;
+    let totalQuantity = 0;
+
+    products.forEach(p => {
+      const purchasePrice = p.purchasePrice !== undefined ? p.purchasePrice : Math.round(p.price * 0.8);
+      const quantity = p.stockQuantity !== undefined ? p.stockQuantity : 10;
+      
+      totalPurchaseCost += purchasePrice * quantity;
+      totalPotentialRevenue += p.price * quantity;
+      totalPotentialProfit += (p.price - purchasePrice) * quantity;
+      totalQuantity += quantity;
+    });
+
+    return {
+      totalPurchaseCost,
+      totalPotentialRevenue,
+      totalPotentialProfit,
+      totalQuantity
+    };
+  }, [products]);
+
   // Save Settings
   const handleSettingsSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -318,6 +471,7 @@ export default function AdminDashboard({
         description: prodDesc,
         price: prodPrice,
         purchasePrice: prodPurchasePrice,
+        stockQuantity: prodStockQuantity,
         image: finalImage,
         category: prodCategory,
         brand: prodBrand,
@@ -336,6 +490,7 @@ export default function AdminDashboard({
         description: prodDesc,
         price: prodPrice,
         purchasePrice: prodPurchasePrice,
+        stockQuantity: prodStockQuantity,
         image: finalImage,
         category: prodCategory || categories[0]?.id || 'bags',
         rating: 5.0,
@@ -357,6 +512,7 @@ export default function AdminDashboard({
     setProdDesc('');
     setProdPrice(1000);
     setProdPurchasePrice(800);
+    setProdStockQuantity(10);
     setProdImage('');
     setProdCategory(categories[0]?.id || 'bags');
     setProdBrand('');
@@ -372,6 +528,7 @@ export default function AdminDashboard({
     setProdDesc(p.description);
     setProdPrice(p.price);
     setProdPurchasePrice(p.purchasePrice !== undefined ? p.purchasePrice : Math.round(p.price * 0.8));
+    setProdStockQuantity(p.stockQuantity !== undefined ? p.stockQuantity : 10);
     setProdImage(p.image);
     setProdCategory(p.category);
     setProdBrand(p.brand || '');
@@ -633,7 +790,7 @@ export default function AdminDashboard({
           </div>
           <div className="text-right">
             <h1 className="text-base sm:text-lg font-black tracking-tight text-white">لوحة التحكم والمخزون</h1>
-            <p className="text-[10px] text-slate-400 font-bold">School Store Touggourt • إدارة المتجر</p>
+            <p className="text-[10px] text-slate-400 font-bold">midad | مداد • إدارة المتجر</p>
           </div>
         </div>
 
@@ -666,6 +823,16 @@ export default function AdminDashboard({
           >
             <BarChart3 className="h-4.5 w-4.5 shrink-0" />
             <span>لوحة الإحصائيات (التقارير)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('sales_stats')}
+            className={`w-full text-right px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2.5 ${
+              activeTab === 'sales_stats' ? 'bg-brand-blue text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <TrendingUp className="h-4.5 w-4.5 shrink-0" />
+            <span>إحصائيات المبيعات</span>
           </button>
 
           <button
@@ -806,8 +973,7 @@ export default function AdminDashboard({
                     <button
                       type="button"
                       onClick={() => {
-                        setVisitorsCount(0);
-                        localStorage.setItem('site_visitors_count', '0');
+                        onUpdateVisitorsCount(0);
                       }}
                       className="text-[9px] bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold px-2.5 py-1.5 rounded border border-red-500/10 transition-colors"
                     >
@@ -845,6 +1011,192 @@ export default function AdminDashboard({
               </div>
 
 
+            </div>
+          )}
+
+          {/* Tab: SALES STATISTICS */}
+          {activeTab === 'sales_stats' && (
+            <div className="space-y-6 text-right animate-in fade-in duration-300" dir="rtl">
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-brand-blue" />
+                  <span>إحصائيات وتحليلات المبيعات</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 font-bold">
+                  تحليل فوري لحركة المبيعات والطلب الفعلي على مستوى المنتجات الفردية والباكات المدرسية.
+                </p>
+              </div>
+
+              {/* Sales Statistics Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 relative overflow-hidden shadow">
+                  <span className="text-slate-400 text-xs font-black block">إجمالي القطع المباعة</span>
+                  <h3 className="text-xl sm:text-2xl font-black mt-2 text-white font-mono">{salesSummary.totalUnitsSold} قطعة</h3>
+                  <p className="text-[10px] text-slate-500 mt-1 font-semibold">مجموع الكميات المباعة من كافة الأدوات والباكات</p>
+                </div>
+
+                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 relative overflow-hidden shadow">
+                  <span className="text-slate-400 text-xs font-black block">المنتج الأكثر طلباً 🔥</span>
+                  <h3 className="text-base sm:text-lg font-black mt-2 text-brand-blue truncate" title={salesSummary.bestSeller.name}>
+                    {salesSummary.bestSeller.name}
+                  </h3>
+                  <p className="text-[10px] text-slate-500 mt-1 font-semibold">
+                    تم بيع <strong className="text-white font-mono">{salesSummary.bestSeller.unitsSold} قطعة</strong> منه بنجاح
+                  </p>
+                </div>
+
+                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 relative overflow-hidden shadow">
+                  <span className="text-slate-400 text-xs font-black block">إجمالي المشترين الفريدين</span>
+                  <h3 className="text-xl sm:text-2xl font-black mt-2 text-emerald-400 font-mono">{salesSummary.uniqueBuyersCount} عميل</h3>
+                  <p className="text-[10px] text-slate-500 mt-1 font-semibold">عدد العملاء المتميزين ببيانات تواصل فريدة</p>
+                </div>
+              </div>
+
+              {/* Table controls */}
+              <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <h4 className="text-xs font-black text-white self-start sm:self-center">جدول تحليل مبيعات السلع والباكات ({processedStats.length} عنصر)</h4>
+                  
+                  {/* Search stats input */}
+                  <div className="relative w-full sm:max-w-xs">
+                    <input
+                      type="text"
+                      placeholder="ابحث عن منتج أو تصنيف..."
+                      value={salesSearchTerm}
+                      onChange={(e) => setSalesSearchTerm(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 pr-9 pl-4 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-blue font-bold text-right"
+                    />
+                    <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+                  </div>
+                </div>
+
+                {/* Sales Table list */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right text-xs font-semibold">
+                    <thead className="bg-slate-900 text-slate-400 border-b border-slate-800">
+                      <tr>
+                        <th 
+                          onClick={() => {
+                            setSalesSortKey('name');
+                            setSalesSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+                          }}
+                          className="p-4 cursor-pointer hover:bg-slate-850 hover:text-white transition-colors"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span>المنتج</span>
+                            {salesSortKey === 'name' && (salesSortOrder === 'asc' ? ' ▲' : ' ▼')}
+                          </div>
+                        </th>
+                        <th className="p-4">نوع المنتج</th>
+                        <th className="p-4 text-left">السعر</th>
+                        <th 
+                          onClick={() => {
+                            setSalesSortKey('unitsSold');
+                            setSalesSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+                          }}
+                          className="p-4 text-center cursor-pointer hover:bg-slate-850 hover:text-white transition-colors"
+                        >
+                          <div className="flex items-center justify-center gap-1">
+                            <span>عدد القطع المباعة</span>
+                            {salesSortKey === 'unitsSold' && (salesSortOrder === 'asc' ? ' ▲' : ' ▼')}
+                          </div>
+                        </th>
+                        <th 
+                          onClick={() => {
+                            setSalesSortKey('buyers');
+                            setSalesSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+                          }}
+                          className="p-4 text-center cursor-pointer hover:bg-slate-850 hover:text-white transition-colors"
+                        >
+                          <div className="flex items-center justify-center gap-1">
+                            <span>عدد المشترين</span>
+                            {salesSortKey === 'buyers' && (salesSortOrder === 'asc' ? ' ▲' : ' ▼')}
+                          </div>
+                        </th>
+                        <th 
+                          onClick={() => {
+                            setSalesSortKey('totalRevenue');
+                            setSalesSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+                          }}
+                          className="p-4 text-left cursor-pointer hover:bg-slate-850 hover:text-white transition-colors"
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            <span>إجمالي المبيعات</span>
+                            {salesSortKey === 'totalRevenue' && (salesSortOrder === 'asc' ? ' ▲' : ' ▼')}
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800">
+                      {processedStats.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="text-center py-12 text-slate-500 font-bold">
+                            لا توجد منتجات أو باكات تطابق معايير البحث
+                          </td>
+                        </tr>
+                      ) : (
+                        processedStats.map((item) => (
+                          <tr key={item.id + '-' + item.name} className="hover:bg-slate-900/40 transition-colors">
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <img
+                                  src={getCompatibleImageUrl(item.image)}
+                                  alt={item.name}
+                                  className="h-10 w-10 rounded-xl object-cover border border-slate-800 shrink-0 bg-slate-950"
+                                  referrerPolicy="no-referrer"
+                                />
+                                <div className="text-right">
+                                  <p className="font-extrabold text-white text-[12px] sm:text-xs leading-normal max-w-[220px] sm:max-w-[320px] truncate" title={item.name}>
+                                    {item.name}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500 mt-0.5">
+                                    الفئة: {categories.find(c => c.id === item.category)?.name || item.category}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              {item.isPack ? (
+                                <span className="bg-amber-500/10 text-amber-400 text-[10px] font-black px-2.5 py-1 rounded-full border border-amber-500/20">
+                                  باك مدرسي 🎁
+                                </span>
+                              ) : (
+                                <span className="bg-slate-800 text-slate-400 text-[10px] font-bold px-2.5 py-1 rounded-full border border-slate-700">
+                                  منتج فردي 📦
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-4 text-left font-mono font-bold text-slate-400">
+                              {formatPrice(item.price)}
+                            </td>
+                            <td className="p-4 text-center">
+                              <span className={`inline-block px-3 py-1 rounded-xl text-xs font-mono font-black ${
+                                item.unitsSold > 0 
+                                  ? 'bg-brand-blue/15 text-white ring-1 ring-brand-blue/30' 
+                                  : 'bg-slate-900 text-slate-500'
+                              }`}>
+                                {item.unitsSold}
+                              </span>
+                            </td>
+                            <td className="p-4 text-center">
+                              <span className={`inline-block px-3 py-1 rounded-xl text-xs font-mono font-black ${
+                                item.uniqueBuyersCount > 0 
+                                  ? 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30' 
+                                  : 'bg-slate-900 text-slate-500'
+                              }`}>
+                                {item.uniqueBuyersCount}
+                              </span>
+                            </td>
+                            <td className="p-4 text-left font-mono font-black text-white">
+                              {formatPrice(item.totalRevenue)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
 
@@ -911,7 +1263,7 @@ export default function AdminDashboard({
                           placeholder="مثال: 1000"
                         />
                       </div>
-
+                      
                       {/* حساب الربح تلقائياً */}
                       {(() => {
                         const profit = (Number(prodPrice) || 0) - (Number(prodPurchasePrice) || 0);
@@ -1073,53 +1425,59 @@ export default function AdminDashboard({
                       <tr>
                         <th className="p-4">المنتج</th>
                         <th className="p-4">التصنيف</th>
-                        <th className="p-4">السعر</th>
-                        <th className="p-4">المخزن</th>
+                        <th className="p-4">سعر الشراء</th>
+                        <th className="p-4">سعر البيع</th>
+                        <th className="p-4">حالة المخزن</th>
                         <th className="p-4 text-center">عمليات</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
-                      {filteredProductsList.map((p) => (
-                        <tr key={p.id} className="hover:bg-slate-900/50 transition-colors">
-                          <td className="p-4 flex items-center gap-3">
-                            <img src={getCompatibleImageUrl(p.image)} alt={p.name} className="h-10 w-10 rounded-lg object-cover border border-slate-800 shrink-0" referrerPolicy="no-referrer" />
-                            <span className="font-extrabold truncate max-w-xs">{p.name}</span>
-                          </td>
-                          <td className="p-4 text-slate-300">{p.category}</td>
-                          <td className="p-4 font-black text-brand-blue">{formatPrice(p.price)}</td>
-                          <td className="p-4">
-                            <button
-                              type="button"
-                              onClick={() => handleToggleStock(p)}
-                              className={`px-2.5 py-1 rounded-full text-[10px] font-black border ${
-                                p.inStock 
-                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                                  : 'bg-red-500/10 text-red-400 border-red-500/20'
-                              }`}
-                            >
-                              {p.inStock ? 'متوفر' : 'غير متوفر'}
-                            </button>
-                          </td>
-                          <td className="p-4 text-center space-x-1 space-x-reverse">
-                            <button
-                              type="button"
-                              onClick={() => startEditProduct(p)}
-                              className="p-1.5 bg-slate-800 hover:bg-brand-blue hover:text-white rounded-lg transition-colors text-slate-300"
-                              title="تعديل"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteProduct(p.id)}
-                              className="p-1.5 bg-slate-800 hover:bg-rose-600 hover:text-white rounded-lg transition-colors text-rose-400"
-                              title="حذف"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredProductsList.map((p) => {
+                        const purchasePrice = p.purchasePrice !== undefined ? p.purchasePrice : Math.round(p.price * 0.8);
+                        
+                        return (
+                          <tr key={p.id} className="hover:bg-slate-900/50 transition-colors">
+                            <td className="p-4 flex items-center gap-3">
+                              <img src={getCompatibleImageUrl(p.image)} alt={p.name} className="h-10 w-10 rounded-lg object-cover border border-slate-800 shrink-0" referrerPolicy="no-referrer" />
+                              <span className="font-extrabold truncate max-w-xs">{p.name}</span>
+                            </td>
+                            <td className="p-4 text-slate-300">{p.category}</td>
+                            <td className="p-4 font-mono text-slate-400">{formatPrice(purchasePrice)}</td>
+                            <td className="p-4 font-mono font-black text-brand-blue">{formatPrice(p.price)}</td>
+                            <td className="p-4">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleStock(p)}
+                                className={`px-2.5 py-1 rounded-full text-[10px] font-black border ${
+                                  p.inStock 
+                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                                    : 'bg-red-500/10 text-red-400 border-red-500/20'
+                                }`}
+                              >
+                                {p.inStock ? 'متوفر' : 'غير متوفر'}
+                              </button>
+                            </td>
+                            <td className="p-4 text-center space-x-1 space-x-reverse">
+                              <button
+                                type="button"
+                                onClick={() => startEditProduct(p)}
+                                className="p-1.5 bg-slate-800 hover:bg-brand-blue hover:text-white rounded-lg transition-colors text-slate-300"
+                                title="تعديل"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteProduct(p.id)}
+                                className="p-1.5 bg-slate-800 hover:bg-rose-600 hover:text-white rounded-lg transition-colors text-rose-400"
+                                title="حذف"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

@@ -1,6 +1,6 @@
 {
-  "name": "School Store Touggourt",
-  "description": "متجر إلكتروني احترافي لبيع اللوازم والأدوات المدرسية في ولاية توقرت بالجزائر",
+  "name": "midad",
+  "description": "مداد (midad) - متجر إلكتروني احترافي لبيع اللوازم والأدوات المدرسية في الجزائر",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

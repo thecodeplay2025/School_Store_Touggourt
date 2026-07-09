@@ -19,11 +19,11 @@ export default function SEO({
   product = null,
   isStore = false,
 }: SEOProps) {
-  const siteName = 'School Store Touggourt | متجر المستلزمات المدرسية بتوقرت';
-  const defaultDesc = 'وجهتك الإلكترونية الأولى بولاية توقرت لشراء كافة اللوازم والمستلزمات المدرسية والأكاديمية بأفضل الأسعار. حقائب، دفاتر، أقلام، وآلات حاسبة.';
+  const siteName = 'midad | مداد - متجر المستلزمات المدرسية';
+  const defaultDesc = 'مداد (midad) - وجهتك الإلكترونية الأولى لشراء كافة اللوازم والمستلزمات المدرسية والأكاديمية بأفضل الأسعار. حقائب، دفاتر، أقلام، وآلات حاسبة.';
   const defaultImage = 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&q=80&w=600'; // Default bag/store image
 
-  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://schoolstore-touggourt.netlify.app';
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://midad-store.netlify.app';
   const canonicalUrl = `${currentOrigin}${canonicalPath}`;
 
   const metaTitle = title ? `${title} | ${siteName}` : siteName;
@@ -35,7 +35,7 @@ export default function SEO({
     '@context': 'https://schema.org',
     '@type': 'Organization',
     '@id': `${currentOrigin}/#organization`,
-    'name': 'School Store Touggourt',
+    'name': 'midad | مداد',
     'url': currentOrigin,
     'logo': 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&q=80&w=180',
     'contactPoint': {

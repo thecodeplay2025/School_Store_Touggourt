@@ -258,8 +258,8 @@ async function startServer() {
   ];
 
   const SITE_SETTINGS = {
-    storeName: 'School Store Touggourt',
-    storeDescription: 'وجهتك الإلكترونية المحلية الأولى بولاية توقرت لشراء كافة اللوازم والمستلزمات المدرسية والأكاديمية بأفضل الأسعار.',
+    storeName: 'midad | مداد',
+    storeDescription: 'مداد (midad) - وجهتك الإلكترونية الأولى لشراء كافة اللوازم والمستلزمات المدرسية والأكاديمية بأفضل الأسعار.',
     contactPhone1: '0661000000',
     contactPhone2: '0771000000',
     warehouseAddress: 'حي المستقبل، وسط مدينة توقرت، الجزائر',
@@ -376,7 +376,8 @@ async function startServer() {
           users: [],
           reviews: REVIEWS,
           siteSettings: SITE_SETTINGS,
-          packs: PACKS
+          packs: PACKS,
+          visitors: { count: 4850 }
         };
         fs.writeFileSync(DB_FILE, JSON.stringify(initialState, null, 2), "utf8");
         return initialState;
@@ -393,7 +394,8 @@ async function startServer() {
         users: [],
         reviews: REVIEWS,
         siteSettings: SITE_SETTINGS,
-        packs: PACKS
+        packs: PACKS,
+        visitors: { count: 4850 }
       };
     }
   };
@@ -455,7 +457,7 @@ async function startServer() {
     }
 
     try {
-      const [products, categories, municipalities, orders, users, reviews, siteSettings, packs] = await Promise.all([
+      const [products, categories, municipalities, orders, users, reviews, siteSettings, packs, visitors] = await Promise.all([
         getCollectionData('products', localDb.products),
         getCollectionData('categories', localDb.categories),
         getCollectionData('municipalities', localDb.municipalities),
@@ -464,6 +466,7 @@ async function startServer() {
         getCollectionData('reviews', localDb.reviews),
         getCollectionData('siteSettings', localDb.siteSettings),
         getCollectionData('packs', localDb.packs),
+        getCollectionData('visitors', localDb.visitors || { count: 4850 }),
       ]);
 
       const dbState = {
@@ -474,7 +477,8 @@ async function startServer() {
         users,
         reviews,
         siteSettings,
-        packs
+        packs,
+        visitors
       };
 
       // Keep local backup synchronized
@@ -512,6 +516,22 @@ async function startServer() {
     try {
       const db = await getWholeDBAsync();
       res.json(db);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 1.5. Increment visitors count
+  app.post("/api/visit", async (req, res) => {
+    try {
+      const dbState = await getWholeDBAsync();
+      const currentCount = (dbState.visitors && typeof dbState.visitors.count === 'number')
+        ? dbState.visitors.count
+        : 4850;
+      const nextCount = currentCount + 1;
+      const visitorsObj = { count: nextCount };
+      await saveDBAsync('visitors', visitorsObj);
+      res.json({ success: true, count: nextCount });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

@@ -32,6 +32,7 @@ interface PackLandingPageProps {
   onAddToWishlist: (p: Product) => void;
   isWishlisted: boolean;
   onDirectPurchase: (p: Product) => void;
+  products?: Product[];
 }
 
 // Custom function to determine realistic unit prices for pack items
@@ -58,7 +59,8 @@ export default function PackLandingPage({
   onAddToCart,
   onAddToWishlist,
   isWishlisted,
-  onDirectPurchase
+  onDirectPurchase,
+  products = []
 }: PackLandingPageProps) {
   const [successMsg, setSuccessMsg] = useState(false);
 
@@ -70,6 +72,12 @@ export default function PackLandingPage({
   // Keep original items list as reference
   const originalItems = product.packItems || [];
 
+  // Helper to find actual item unit price either from products list or fallback
+  const resolveItemUnitPrice = (name: string): number => {
+    const matched = products.find(p => p.name.trim().toLowerCase() === name.trim().toLowerCase());
+    return matched ? matched.price : getItemUnitPrice(name);
+  };
+
   // Helper to calculate custom price dynamically
   const getCustomPrice = () => {
     if (!product.packItems) return product.price;
@@ -78,7 +86,7 @@ export default function PackLandingPage({
       const original = originalItems.find(o => o.id === item.id);
       if (original) {
         const diff = item.quantity - original.quantity;
-        priceDiff += diff * getItemUnitPrice(item.name);
+        priceDiff += diff * resolveItemUnitPrice(item.name);
       }
     });
     return Math.max(1500, product.price + priceDiff); // Ensure pack doesn't become too cheap
@@ -100,7 +108,7 @@ export default function PackLandingPage({
     };
   };
 
-  const standardOriginalPrice = originalItems.reduce((sum, item) => sum + (item.quantity * getItemUnitPrice(item.name)), 0);
+  const standardOriginalPrice = originalItems.reduce((sum, item) => sum + (item.quantity * resolveItemUnitPrice(item.name)), 0);
   const initialDiscount = standardOriginalPrice > product.price ? Math.round(((standardOriginalPrice - product.price) / standardOriginalPrice) * 100) : 0;
 
   const totalItemsCount = customPackItems.reduce((acc, curr) => acc + curr.quantity, 0);
@@ -282,7 +290,7 @@ export default function PackLandingPage({
                     <span className="text-xs font-black text-slate-900 block leading-tight">{item.name}</span>
                     <div className="flex items-center gap-1.5 mt-1">
                       <span className="text-[10px] text-slate-400 font-semibold">
-                        السعر المقدر: {getItemUnitPrice(item.name)} د.ج للقطعة
+                        السعر المقدر: {resolveItemUnitPrice(item.name)} د.ج للقطعة
                       </span>
                       {isExcluded && (
                         <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded-full border border-red-100">

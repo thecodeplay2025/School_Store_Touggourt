@@ -31,6 +31,7 @@ import Header from './components/Header';
 import Hero from './components/Hero';
 import Categories from './components/Categories';
 import ProductCard from './components/ProductCard';
+import ProductQuickViewModal from './components/ProductQuickViewModal';
 import CartDrawer from './components/CartDrawer';
 import WishlistDrawer from './components/WishlistDrawer';
 import CheckoutModal from './components/CheckoutModal';
@@ -45,6 +46,7 @@ import UserProfileView from './components/UserProfileView';
 import AdminDashboard from './components/AdminDashboard';
 import { getCompatibleImageUrl } from './utils/imageHelper';
 import { saveDoc, getDocData, subscribeDoc } from './lib/firebase';
+import midadLogo from './assets/images/midad_brand_logo_1783602520157.jpg';
 
 
 export default function App() {
@@ -105,8 +107,8 @@ export default function App() {
     const saved = localStorage.getItem('school_store_settings');
     if (saved) return JSON.parse(saved);
     return {
-      storeName: 'School Store Touggourt',
-      storeDescription: 'وجهتك الإلكترونية المحلية الأولى بولاية توقرت لشراء كافة اللوازم والمستلزمات المدرسية والأكاديمية بأفضل الأسعار.',
+      storeName: 'midad | مداد',
+      storeDescription: 'مداد (midad) - وجهتك الإلكترونية الأولى لشراء كافة اللوازم والمستلزمات المدرسية والأكاديمية بأفضل الأسعار.',
       contactPhone1: '0661000000',
       contactPhone2: '0771000000',
       warehouseAddress: 'حي المستقبل، وسط مدينة توقرت، الجزائر',
@@ -220,6 +222,8 @@ export default function App() {
   const [activeProductDetail, setActiveProductDetail] = useState<Product | null>(null);
   const [directPurchaseItem, setDirectPurchaseItem] = useState<CartItem | null>(null);
   const [isClearCartModalOpen, setIsClearCartModalOpen] = useState(false);
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
   
   // Track order form states
   const [trackOrderId, setTrackOrderId] = useState('');
@@ -231,6 +235,9 @@ export default function App() {
 
   // Toast State
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+
+  // Visitors State (backed by server or direct Firestore Client SDK)
+  const [visitorsCount, setVisitorsCount] = useState<number>(4850);
 
   // Synchronizers and Server Synchronization
   const isInitialLoad = useRef(true);
@@ -297,6 +304,9 @@ export default function App() {
           if (data.siteSettings) setSiteSettings(data.siteSettings);
           if (data.packs) setPacks(data.packs);
           if (data.orders) setRecentOrders(data.orders);
+          if (data.visitors && typeof data.visitors.count === 'number') {
+            setVisitorsCount(data.visitors.count);
+          }
         }
         setTimeout(() => {
           isInitialLoad.current = false;
@@ -306,6 +316,40 @@ export default function App() {
         console.warn('Backend API /api/db unavailable (expected on static hostings like Netlify). Switching to direct Firestore Client SDK mode. Error:', err);
         setUseDirectFirestore(true);
       });
+  }, []);
+
+  // 1.2. Actual Website Visitor Tracker (database backed, run once per browser session)
+  useEffect(() => {
+    const sessionVisited = sessionStorage.getItem('store_session_visited');
+    if (!sessionVisited) {
+      sessionStorage.setItem('store_session_visited', 'true');
+      
+      // Attempt backend increment API first
+      fetch('/api/visit', { method: 'POST' })
+        .then(res => {
+          if (!res.ok) throw new Error();
+          return res.json();
+        })
+        .then(resData => {
+          if (resData && typeof resData.count === 'number') {
+            setVisitorsCount(resData.count);
+          }
+        })
+        .catch(() => {
+          // Fallback to direct Firestore Client SDK
+          getDocData('visitors')
+            .then(data => {
+              const currentCount = data && typeof data.count === 'number' ? data.count : 4850;
+              const nextCount = currentCount + 1;
+              saveDoc('visitors', { count: nextCount })
+                .then(() => {
+                  setVisitorsCount(nextCount);
+                })
+                .catch(err => console.error('Failed to increment visitors directly:', err));
+            })
+            .catch(err => console.error('Failed to get visitors directly:', err));
+        });
+    }
   }, []);
 
   // Real-time Firestore subscriptions for Netlify/serverless environments
@@ -323,7 +367,8 @@ export default function App() {
       { key: 'reviews', setter: setReviews },
       { key: 'settings', setter: setSiteSettings },
       { key: 'packs', setter: setPacks },
-      { key: 'orders', setter: setRecentOrders }
+      { key: 'orders', setter: setRecentOrders },
+      { key: 'visitors', setter: () => {} }
     ];
 
     keys.forEach(({ key, setter }) => {
@@ -335,7 +380,13 @@ export default function App() {
         loadedKeys.current.add(key);
         if (data) {
           lastServerData.current[key] = JSON.stringify(data);
-          setter(data);
+          if (key === 'visitors') {
+            if (typeof data.count === 'number') {
+              setVisitorsCount(data.count);
+            }
+          } else {
+            setter(data);
+          }
         }
       });
       unsubscribers.push(unsub);
@@ -925,6 +976,11 @@ export default function App() {
         reviews={reviews}
         siteSettings={siteSettings}
         packs={packs}
+        visitorsCount={visitorsCount}
+        onUpdateVisitorsCount={(newCount) => {
+          setVisitorsCount(newCount);
+          saveToServer('visitors', { count: newCount });
+        }}
         onUpdatePacks={setPacks}
         onUpdateProducts={(updatedProducts) => {
           setProducts(updatedProducts);
@@ -1153,6 +1209,7 @@ export default function App() {
             onAddToWishlist={handleToggleWishlist}
             isWishlisted={wishlist.some(item => item.id === activeProductDetail.id)}
             onDirectPurchase={handleDirectPurchase}
+            products={products}
           />
         ) : (
           <>
@@ -1369,6 +1426,10 @@ export default function App() {
                   onAddToCart={handleAddToCart}
                   onAddToWishlist={handleToggleWishlist}
                   isWishlisted={wishlist.some((item) => item.id === product.id)}
+                  onClick={(prod) => {
+                    setQuickViewProduct(prod);
+                    setIsQuickViewOpen(true);
+                  }}
                 />
               ))}
             </div>
@@ -1500,10 +1561,13 @@ export default function App() {
           {/* About Column */}
           <div className="md:col-span-7 space-y-4 text-right">
             <div className="flex items-center gap-2">
-              <div className="bg-brand-blue text-white p-2 rounded-xl">
-                <GraduationCap className="h-5 w-5" />
-              </div>
-              <h2 className="text-xl font-black tracking-tight">School Store Touggourt</h2>
+              <img 
+                src={midadLogo} 
+                alt="midad logo" 
+                className="w-14 h-14 object-contain rounded-none bg-white p-1 shrink-0" 
+                referrerPolicy="no-referrer" 
+              />
+              <h2 className="text-xl font-black tracking-tight">midad | مداد</h2>
             </div>
             <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-medium">
               متجرنا هو وجهتك الإلكترونية المحلية الأولى بولاية توقرت لشراء كافة اللوازم والمستلزمات المدرسية والأكاديمية بأفضل الأسعار. نسهل حياة التلاميذ والطلبة الجامعيين والأولياء من خلال توصيل السلع الأصلية المضمونة مباشرة لباب منازلكم والدفع عند المعاينة والاستلام.
@@ -1533,7 +1597,7 @@ export default function App() {
         {/* Lower footer copyright */}
         <div className="bg-slate-950 py-6 px-4">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-slate-500">
-            <p>© {new Date().getFullYear()} School Store Touggourt. جميع الحقوق محفوظة لولاية توقرت بالجزائر.</p>
+            <p>© {new Date().getFullYear()} midad | مداد. جميع الحقوق محفوظة لولاية توقرت بالجزائر.</p>
             <div className="flex flex-wrap items-center gap-4">
               <button onClick={() => { setCurrentView('terms'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:underline hover:text-white cursor-pointer">شروط الاستخدام</button>
               <span>•</span>
@@ -1595,6 +1659,18 @@ export default function App() {
         onOrderSuccess={handleOrderSuccess}
         onClearCart={directPurchaseItem ? () => setDirectPurchaseItem(null) : handleClearCart}
         isDirect={!!directPurchaseItem}
+      />
+
+      {/* Product Quick View Modal */}
+      <ProductQuickViewModal
+        isOpen={isQuickViewOpen}
+        onClose={() => {
+          setIsQuickViewOpen(false);
+          setQuickViewProduct(null);
+        }}
+        product={quickViewProduct}
+        onDirectPurchase={handleDirectPurchase}
+        onAddToCart={handleAddToCart}
       />
 
       {/* Clear Cart Confirmation Modal */}
