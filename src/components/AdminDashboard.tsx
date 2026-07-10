@@ -102,7 +102,7 @@ export default function AdminDashboard({
   // Custom Delete Confirmation Modal State
   const [deleteConfirm, setDeleteConfirm] = useState<{
     id: string;
-    type: 'product' | 'order' | 'pack';
+    type: 'product' | 'order' | 'pack' | 'visitors_reset';
     title: string;
     message: string;
   } | null>(null);
@@ -190,6 +190,7 @@ export default function AdminDashboard({
   const [setWarehouse, setSetWarehouse] = useState(siteSettings.warehouseAddress);
   const [setThreshold, setSetThreshold] = useState(siteSettings.freeShippingThreshold);
   const [setBannerText, setSetBannerText] = useState(siteSettings.promoBannerText);
+  const [setLogoUrl, setSetLogoUrl] = useState(siteSettings.logoUrl || '');
 
   // --- SALES STATISTICS COMPUTATIONS ---
   const processedStats = useMemo(() => {
@@ -440,7 +441,8 @@ export default function AdminDashboard({
       contactPhone2: setPhone2,
       warehouseAddress: setWarehouse,
       freeShippingThreshold: setThreshold,
-      promoBannerText: setBannerText
+      promoBannerText: setBannerText,
+      logoUrl: setLogoUrl || undefined
     });
     triggerNoti('تم حفظ إعدادات الموقع وتطبيقها على المتجر بنجاح!');
   };
@@ -580,6 +582,9 @@ export default function AdminDashboard({
       const updated = packs.filter(p => p.id !== id);
       onUpdatePacks(updated);
       triggerNoti('تم حذف الباك بنجاح');
+    } else if (type === 'visitors_reset') {
+      onUpdateVisitorsCount(0);
+      triggerNoti('تم تصفير عدد زوار الموقع بنجاح');
     }
     setDeleteConfirm(null);
   };
@@ -973,7 +978,12 @@ export default function AdminDashboard({
                     <button
                       type="button"
                       onClick={() => {
-                        onUpdateVisitorsCount(0);
+                        setDeleteConfirm({
+                          id: 'visitors',
+                          type: 'visitors_reset',
+                          title: 'تصفير إحصائية الزوار 🔄',
+                          message: 'هل أنت متأكد من رغبتك في تصفير (مسح) إجمالي عدد زوار الموقع وإعادته إلى (0)؟ لا يمكن التراجع عن هذا الإجراء.'
+                        });
                       }}
                       className="text-[9px] bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold px-2.5 py-1.5 rounded border border-red-500/10 transition-colors"
                     >
@@ -1828,6 +1838,24 @@ export default function AdminDashboard({
                 </div>
 
                 <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-400">رابط شعار الموقع (Logo URL)</label>
+                  <div className="flex gap-3 items-center">
+                    <input
+                      type="url"
+                      placeholder="رابط الشعار (اترك فارغاً للمحافظة على الشعار الافتراضي)..."
+                      value={setLogoUrl}
+                      onChange={(e) => setSetLogoUrl(convertGoogleDriveUrl(e.target.value))}
+                      className="flex-1 bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-mono text-left text-white focus:outline-none focus:border-brand-blue"
+                    />
+                    {setLogoUrl && (
+                      <div className="h-10 w-10 rounded-xl overflow-hidden border border-slate-800 bg-slate-900 shrink-0">
+                        <img src={getCompatibleImageUrl(setLogoUrl)} alt="Logo Preview" className="h-full w-full object-contain p-1" referrerPolicy="no-referrer" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-400">حد التوصيل المجاني بالدينار (د.ج)</label>
                   <input
                     type="number"
@@ -2465,8 +2493,16 @@ export default function AdminDashboard({
           <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-6 shadow-2xl relative text-slate-100 animate-in zoom-in-95 duration-200">
             {/* Warning Header */}
             <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
-              <div className="h-10 w-10 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center border border-rose-500/20 shrink-0">
-                <Trash2 className="h-5 w-5" />
+              <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 border ${
+                deleteConfirm.type === 'visitors_reset'
+                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                  : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+              }`}>
+                {deleteConfirm.type === 'visitors_reset' ? (
+                  <RefreshCw className="h-5 w-5" />
+                ) : (
+                  <Trash2 className="h-5 w-5" />
+                )}
               </div>
               <div>
                 <h3 className="text-sm font-black text-white">{deleteConfirm.title}</h3>
@@ -2484,9 +2520,17 @@ export default function AdminDashboard({
               <button
                 type="button"
                 onClick={handleExecuteDelete}
-                className="flex-1 py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                className={`flex-1 py-3 px-4 text-white rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  deleteConfirm.type === 'visitors_reset'
+                    ? 'bg-amber-600 hover:bg-amber-700'
+                    : 'bg-rose-600 hover:bg-rose-700'
+                }`}
               >
-                <span>تأكيد الحذف 🗑️</span>
+                {deleteConfirm.type === 'visitors_reset' ? (
+                  <span>تأكيد التصفير 🔄</span>
+                ) : (
+                  <span>تأكيد الحذف 🗑️</span>
+                )}
               </button>
               <button
                 type="button"

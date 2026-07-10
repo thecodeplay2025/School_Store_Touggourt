@@ -86,4 +86,5 @@ export interface SiteSettings {
   warehouseAddress: string;
   freeShippingThreshold: number;
   promoBannerText: string;
+  logoUrl?: string;
 }

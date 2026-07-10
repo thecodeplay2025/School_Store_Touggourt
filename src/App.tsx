@@ -46,7 +46,7 @@ import UserProfileView from './components/UserProfileView';
 import AdminDashboard from './components/AdminDashboard';
 import { getCompatibleImageUrl } from './utils/imageHelper';
 import { saveDoc, getDocData, subscribeDoc } from './lib/firebase';
-import midadLogo from './assets/images/midad_brand_logo_1783602520157.jpg';
+import midadLogo from './assets/images/midad_logo.png';
 
 
 export default function App() {
@@ -301,7 +301,11 @@ export default function App() {
           if (data.municipalities) setMunicipalities(data.municipalities);
           if (data.users) setAllUsers(data.users);
           if (data.reviews) setReviews(data.reviews);
-          if (data.siteSettings) setSiteSettings(data.siteSettings);
+          if (data.siteSettings) {
+            setSiteSettings(data.siteSettings);
+            loadedKeys.current.add('settings');
+            loadedKeys.current.add('siteSettings');
+          }
           if (data.packs) setPacks(data.packs);
           if (data.orders) setRecentOrders(data.orders);
           if (data.visitors && typeof data.visitors.count === 'number') {
@@ -580,10 +584,13 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('school_store_settings', JSON.stringify(siteSettings));
-    if (!isInitialLoad.current && loadedKeys.current.has('settings')) {
+    if (!isInitialLoad.current && (loadedKeys.current.has('settings') || loadedKeys.current.has('siteSettings'))) {
       const stringified = JSON.stringify(siteSettings);
-      if (lastServerData.current['settings'] !== stringified) {
+      if (lastServerData.current['settings'] !== stringified || lastServerData.current['siteSettings'] !== stringified) {
         saveToServer('settings', siteSettings);
+        saveToServer('siteSettings', siteSettings);
+        lastServerData.current['settings'] = stringified;
+        lastServerData.current['siteSettings'] = stringified;
       }
     }
   }, [siteSettings]);
@@ -1171,6 +1178,7 @@ export default function App() {
 
       {/* Sticky Header */}
       <Header
+        siteSettings={siteSettings}
         cart={cart}
         onOpenCart={() => setIsCartOpen(true)}
         searchQuery={searchQuery}
@@ -1562,9 +1570,9 @@ export default function App() {
           <div className="md:col-span-7 space-y-4 text-right">
             <div className="flex items-center gap-2">
               <img 
-                src={midadLogo} 
+                src={siteSettings?.logoUrl ? getCompatibleImageUrl(siteSettings.logoUrl) : midadLogo} 
                 alt="midad logo" 
-                className="w-14 h-14 object-contain rounded-none bg-white p-1 shrink-0" 
+                className="w-10 h-10 object-contain shrink-0 rounded-xl" 
                 referrerPolicy="no-referrer" 
               />
               <h2 className="text-xl font-black tracking-tight">midad | مداد</h2>

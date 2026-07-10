@@ -23,9 +23,23 @@ export default function CheckoutModal({
   isDirect = false
 }: CheckoutModalProps) {
   
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [selectedMuni, setSelectedMuni] = useState<Municipality>(MUNICIPALITIES[0]);
+  const [address, setAddress] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successOrder, setSuccessOrder] = useState<Order | null>(null);
+  
   React.useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      // Reset form and success states on open
+      setName('');
+      setPhone('');
+      setSelectedMuni(MUNICIPALITIES[0]);
+      setAddress('');
+      setIsSubmitting(false);
+      setSuccessOrder(null);
     } else {
       document.body.style.overflow = '';
     }
@@ -33,13 +47,6 @@ export default function CheckoutModal({
       document.body.style.overflow = '';
     };
   }, [isOpen]);
-
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [selectedMuni, setSelectedMuni] = useState<Municipality>(MUNICIPALITIES[0]);
-  const [address, setAddress] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successOrder, setSuccessOrder] = useState<Order | null>(null);
 
   const formatPrice = (price: number) => {
     return price.toLocaleString('ar-DZ') + ' د.ج';

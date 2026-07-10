@@ -13,8 +13,9 @@ import {
   Heart,
   Home
 } from 'lucide-react';
-import { CartItem, User } from '../types';
-import midadLogo from '../assets/images/midad_brand_logo_1783602520157.jpg';
+import { CartItem, User, SiteSettings } from '../types';
+import midadLogo from '../assets/images/midad_logo.png';
+import { getCompatibleImageUrl } from '../utils/imageHelper';
 
 interface HeaderProps {
   cart: CartItem[];
@@ -28,6 +29,7 @@ interface HeaderProps {
   currentUser?: User | null;
   onOpenAuth?: () => void;
   onNavigateView?: (view: 'home' | 'profile' | 'admin' | 'auth') => void;
+  siteSettings?: SiteSettings;
 }
 
 export default function Header({
@@ -41,8 +43,10 @@ export default function Header({
   onOpenWishlist,
   currentUser,
   onOpenAuth,
-  onNavigateView
+  onNavigateView,
+  siteSettings
 }: HeaderProps) {
+  const currentLogo = siteSettings?.logoUrl ? getCompatibleImageUrl(siteSettings.logoUrl) : midadLogo;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
   const [showPromo, setShowPromo] = useState(() => {
@@ -99,9 +103,9 @@ export default function Header({
               id="logo-button"
             >
               <img 
-                src={midadLogo} 
+                src={currentLogo} 
                 alt="midad logo" 
-                className="w-14 h-14 sm:w-16 sm:h-16 object-contain rounded-none bg-white p-1 shrink-0" 
+                className="w-10 h-10 sm:w-12 sm:h-12 object-contain shrink-0 rounded-xl" 
                 referrerPolicy="no-referrer" 
               />
               <div className="text-right">
@@ -243,9 +247,9 @@ export default function Header({
               <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-white z-10 shrink-0">
                 <div className="flex items-center gap-2">
                   <img 
-                    src={midadLogo} 
+                    src={currentLogo} 
                     alt="midad logo" 
-                    className="w-14 h-14 object-contain rounded-none bg-white p-1 shrink-0" 
+                    className="w-10 h-10 object-contain shrink-0 rounded-xl" 
                     referrerPolicy="no-referrer" 
                   />
                   <div>
