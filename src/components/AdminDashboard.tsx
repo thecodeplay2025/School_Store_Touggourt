@@ -38,6 +38,15 @@ import {
 } from 'lucide-react';
 import { Product, Category, Municipality, Order, User, Review, SiteSettings } from '../types';
 import { convertGoogleDriveUrl, getCompatibleImageUrl } from '../utils/imageHelper';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip
+} from 'recharts';
 
 interface AdminDashboardProps {
   products: Product[];
@@ -102,7 +111,7 @@ export default function AdminDashboard({
   // Custom Delete Confirmation Modal State
   const [deleteConfirm, setDeleteConfirm] = useState<{
     id: string;
-    type: 'product' | 'order' | 'pack' | 'visitors_reset';
+    type: 'product' | 'order' | 'pack' | 'visitors_reset' | 'category';
     title: string;
     message: string;
   } | null>(null);
@@ -127,8 +136,8 @@ export default function AdminDashboard({
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [prodName, setProdName] = useState('');
   const [prodDesc, setProdDesc] = useState('');
-  const [prodPrice, setProdPrice] = useState(1000);
-  const [prodPurchasePrice, setProdPurchasePrice] = useState(800);
+  const [prodPrice, setProdPrice] = useState<string>('1000');
+  const [prodPurchasePrice, setProdPurchasePrice] = useState<string>('800');
   const [prodStockQuantity, setProdStockQuantity] = useState<number>(10);
   const [prodImage, setProdImage] = useState('');
   const [prodCategory, setProdCategory] = useState(categories[0]?.id || 'bags');
@@ -168,6 +177,7 @@ export default function AdminDashboard({
 
   // --- CATEGORY FORM STATES ---
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [catName, setCatName] = useState('');
   const [catImage, setCatImage] = useState('');
   const [catCount, setCatCount] = useState(0);
@@ -233,8 +243,9 @@ export default function AdminDashboard({
       };
     });
 
-    // Aggregate from all actual orders
+    // Aggregate from all actual orders (only when delivered)
     orders.forEach(order => {
+      if (order.status !== 'delivered') return;
       const customerId = order.phone.trim() || order.customerName.trim();
       if (order.items && Array.isArray(order.items)) {
         order.items.forEach(item => {
@@ -311,6 +322,7 @@ export default function AdminDashboard({
     const allUniqueBuyers = new Set<string>();
 
     orders.forEach(order => {
+      if (order.status !== 'delivered') return;
       const customerId = order.phone.trim() || order.customerName.trim();
       if (customerId) {
         allUniqueBuyers.add(customerId);
@@ -343,6 +355,85 @@ export default function AdminDashboard({
       bestSeller: { name: bestSellerName, unitsSold: bestSellerQty },
       uniqueBuyersCount: allUniqueBuyers.size
     };
+  }, [orders]);
+
+  // Daily Sales Analysis for Chart
+  const salesOverTime = useMemo(() => {
+    const dailyData: Record<string, { date: string; dateLabel: string; ordersCount: number; unitsSold: number; revenue: number }> = {};
+
+    // Sort orders by date chronologically
+    const sortedOrders = [...orders].sort((a, b) => {
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+
+    sortedOrders.forEach(order => {
+      let dateStr = '';
+      try {
+        const d = new Date(order.date);
+        if (!isNaN(d.getTime())) {
+          dateStr = d.toISOString().split('T')[0];
+        } else {
+          dateStr = String(order.date).split('T')[0] || 'أخرى';
+        }
+      } catch (e) {
+        dateStr = 'أخرى';
+      }
+
+      if (!dailyData[dateStr]) {
+        let dateLabel = dateStr;
+        try {
+          const d = new Date(dateStr);
+          if (!isNaN(d.getTime())) {
+            const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+            dateLabel = d.toLocaleDateString('ar-DZ', options);
+          }
+        } catch (err) {}
+
+        dailyData[dateStr] = {
+          date: dateStr,
+          dateLabel,
+          ordersCount: 0,
+          unitsSold: 0,
+          revenue: 0,
+        };
+      }
+
+      dailyData[dateStr].ordersCount += 1;
+      
+      let itemsQty = 0;
+      if (order.status === 'delivered' && order.items && Array.isArray(order.items)) {
+        order.items.forEach(item => {
+          itemsQty += (item.quantity || 0);
+        });
+      }
+      dailyData[dateStr].unitsSold += itemsQty;
+      dailyData[dateStr].revenue += order.total;
+    });
+
+    const chartData = Object.values(dailyData).sort((a, b) => {
+      if (a.date === 'أخرى') return 1;
+      if (b.date === 'أخرى') return -1;
+      return a.date.localeCompare(b.date);
+    });
+
+    if (chartData.length === 0) {
+      const today = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+        chartData.push({
+          date: dateStr,
+          dateLabel: d.toLocaleDateString('ar-DZ', options),
+          ordersCount: 0,
+          unitsSold: 0,
+          revenue: 0
+        });
+      }
+    }
+
+    return chartData;
   }, [orders]);
 
   // --- STATS COMPUTATIONS ---
@@ -465,14 +556,17 @@ export default function AdminDashboard({
 
     const finalImage = convertGoogleDriveUrl(prodImage) || 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&q=80&w=600';
 
+    const parsedPrice = parseFloat(String(prodPrice).replace(',', '.')) || 0;
+    const parsedPurchasePrice = parseFloat(String(prodPurchasePrice).replace(',', '.')) || 0;
+
     if (editingProduct) {
       // Edit
       const updated = products.map(p => p.id === editingProduct.id ? {
         ...p,
         name: prodName,
         description: prodDesc,
-        price: prodPrice,
-        purchasePrice: prodPurchasePrice,
+        price: parsedPrice,
+        purchasePrice: parsedPurchasePrice,
         stockQuantity: prodStockQuantity,
         image: finalImage,
         category: prodCategory,
@@ -490,8 +584,8 @@ export default function AdminDashboard({
         id: 'prod-' + Date.now(),
         name: prodName,
         description: prodDesc,
-        price: prodPrice,
-        purchasePrice: prodPurchasePrice,
+        price: parsedPrice,
+        purchasePrice: parsedPurchasePrice,
         stockQuantity: prodStockQuantity,
         image: finalImage,
         category: prodCategory || categories[0]?.id || 'bags',
@@ -512,8 +606,8 @@ export default function AdminDashboard({
   const clearProductForm = () => {
     setProdName('');
     setProdDesc('');
-    setProdPrice(1000);
-    setProdPurchasePrice(800);
+    setProdPrice('1000');
+    setProdPurchasePrice('800');
     setProdStockQuantity(10);
     setProdImage('');
     setProdCategory(categories[0]?.id || 'bags');
@@ -528,8 +622,8 @@ export default function AdminDashboard({
     setIsAddingProduct(true);
     setProdName(p.name);
     setProdDesc(p.description);
-    setProdPrice(p.price);
-    setProdPurchasePrice(p.purchasePrice !== undefined ? p.purchasePrice : Math.round(p.price * 0.8));
+    setProdPrice(p.price.toString());
+    setProdPurchasePrice(p.purchasePrice !== undefined ? p.purchasePrice.toString() : Math.round(p.price * 0.8).toString());
     setProdStockQuantity(p.stockQuantity !== undefined ? p.stockQuantity : 10);
     setProdImage(p.image);
     setProdCategory(p.category);
@@ -585,6 +679,10 @@ export default function AdminDashboard({
     } else if (type === 'visitors_reset') {
       onUpdateVisitorsCount(0);
       triggerNoti('تم تصفير عدد زوار الموقع بنجاح');
+    } else if (type === 'category') {
+      const updated = categories.filter(c => c.id !== id);
+      onUpdateCategories(updated);
+      triggerNoti('تم حذف التصنيف بنجاح');
     }
     setDeleteConfirm(null);
   };
@@ -732,21 +830,68 @@ export default function AdminDashboard({
     setPackItemsList(prev => prev.map(item => item.id === id ? { ...item, quantity: Math.max(1, newQty) } : item));
   };
 
-  // Category Edit Save
+  // Category Edit / Add Save
   const handleCategorySave = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingCategory) {
       const updated = categories.map(c => c.id === editingCategory.id ? {
         ...c,
         name: catName,
-        image: catImage,
+        image: catImage || 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&q=80&w=600',
         iconName: catIcon,
         count: products.filter(p => p.category === c.id).length
       } : c);
       onUpdateCategories(updated);
       setEditingCategory(null);
+      setCatName('');
+      setCatImage('');
+      setCatIcon('ShoppingBag');
       triggerNoti('تم تحديث تصنيف الأدوات المدرسية بنجاح');
+    } else if (isAddingCategory) {
+      const categoryId = catName.trim().toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-');
+      const finalId = categoryId || 'cat-' + Date.now();
+
+      if (categories.some(c => c.id === finalId)) {
+        triggerNoti('هذا التصنيف موجود بالفعل بنفس المعرف', 'info');
+        return;
+      }
+
+      const newCat: Category = {
+        id: finalId,
+        name: catName,
+        image: catImage || 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&q=80&w=600',
+        iconName: catIcon,
+        count: 0,
+        colorClass: 'bg-brand-blue/10 border-brand-blue text-brand-blue'
+      };
+
+      onUpdateCategories([...categories, newCat]);
+      setIsAddingCategory(false);
+      setCatName('');
+      setCatImage('');
+      setCatIcon('ShoppingBag');
+      triggerNoti('تم إضافة التصنيف الجديد بنجاح');
     }
+  };
+
+  // Delete Category
+  const handleDeleteCategory = (catId: string, catName: string) => {
+    const associatedProducts = products.filter(p => p.category === catId).length;
+    const associatedPacks = packs.filter(p => p.category === catId).length;
+    
+    let warningMsg = `هل أنت متأكد من رغبتك في حذف تصنيف "${catName}" نهائياً من قاعدة بيانات المتجر؟ لا يمكن التراجع عن هذا الإجراء.`;
+    if (associatedProducts > 0 || associatedPacks > 0) {
+      warningMsg += ` تنبيه هام: يوجد ${associatedProducts} منتج و ${associatedPacks} باك مدرسي مرتبطين بهذا التصنيف حالياً.`;
+    }
+
+    setDeleteConfirm({
+      id: catId,
+      type: 'category',
+      title: 'حذف تصنيف السلع 🗑️',
+      message: warningMsg
+    });
   };
 
   // Shipping Municipality Save
@@ -819,71 +964,71 @@ export default function AdminDashboard({
       <div className="flex-1 flex flex-col md:flex-row min-h-0">
         
         {/* Navigation Sidebar Panel */}
-        <aside className="w-full md:w-64 bg-slate-950 border-b md:border-b-0 md:border-l border-slate-800 p-4 space-y-1 shrink-0 text-right">
+        <aside className="w-full md:w-56 bg-slate-950 border-b md:border-b-0 md:border-l border-slate-800 p-3 space-y-1.5 shrink-0 text-right">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`w-full text-right px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2.5 ${
+            className={`w-full text-right px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeTab === 'overview' ? 'bg-brand-blue text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <BarChart3 className="h-4.5 w-4.5 shrink-0" />
-            <span>لوحة الإحصائيات (التقارير)</span>
+            <BarChart3 className="h-4 w-4 shrink-0" />
+            <span>لوحة الإحصائيات</span>
           </button>
 
           <button
             onClick={() => setActiveTab('sales_stats')}
-            className={`w-full text-right px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2.5 ${
+            className={`w-full text-right px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeTab === 'sales_stats' ? 'bg-brand-blue text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <TrendingUp className="h-4.5 w-4.5 shrink-0" />
+            <TrendingUp className="h-4 w-4 shrink-0" />
             <span>إحصائيات المبيعات</span>
           </button>
 
           <button
             onClick={() => { setActiveTab('products'); clearProductForm(); setIsAddingProduct(false); }}
-            className={`w-full text-right px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-between ${
+            className={`w-full text-right px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
               activeTab === 'products' ? 'bg-brand-blue text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <div className="flex items-center gap-2.5">
-              <Package className="h-4.5 w-4.5 shrink-0" />
-              <span>إدارة المنتجات والمخزون</span>
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 shrink-0" />
+              <span>المنتجات والمخزون</span>
             </div>
             <span className="bg-slate-800 text-[10px] text-slate-300 font-bold px-2 py-0.5 rounded-full">{products.length}</span>
           </button>
 
           <button
             onClick={() => { setActiveTab('packs'); clearPackForm(); setIsAddingPack(false); }}
-            className={`w-full text-right px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-between ${
+            className={`w-full text-right px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
               activeTab === 'packs' ? 'bg-brand-blue text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <div className="flex items-center gap-2.5">
-              <Sparkles className="h-4.5 w-4.5 shrink-0" />
-              <span>إدارة الباكات (Packs)</span>
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 shrink-0" />
+              <span>إدارة الباكات</span>
             </div>
             <span className="bg-slate-800 text-[10px] text-slate-300 font-bold px-2 py-0.5 rounded-full">{packs.length}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('categories')}
-            className={`w-full text-right px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2.5 ${
+            className={`w-full text-right px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeTab === 'categories' ? 'bg-brand-blue text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <FolderTree className="h-4.5 w-4.5 shrink-0" />
+            <FolderTree className="h-4 w-4 shrink-0" />
             <span>إدارة التصنيفات</span>
           </button>
 
           <button
             onClick={() => setActiveTab('orders')}
-            className={`w-full text-right px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-between ${
+            className={`w-full text-right px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
               activeTab === 'orders' ? 'bg-brand-blue text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <div className="flex items-center gap-2.5">
-              <ShoppingBag className="h-4.5 w-4.5 shrink-0" />
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="h-4 w-4 shrink-0" />
               <span>إدارة الطلبات</span>
             </div>
             {stats.pendingOrders > 0 && (
@@ -895,27 +1040,27 @@ export default function AdminDashboard({
 
           <button
             onClick={() => setActiveTab('shipping')}
-            className={`w-full text-right px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2.5 ${
+            className={`w-full text-right px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeTab === 'shipping' ? 'bg-brand-blue text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <MapPin className="h-4.5 w-4.5 shrink-0" />
-            <span>إدارة البلديات والشحن</span>
+            <MapPin className="h-4 w-4 shrink-0" />
+            <span>البلديات والشحن</span>
           </button>
 
           <button
             onClick={() => setActiveTab('settings')}
-            className={`w-full text-right px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2.5 ${
+            className={`w-full text-right px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeTab === 'settings' ? 'bg-brand-blue text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <Settings className="h-4.5 w-4.5 shrink-0" />
-            <span>إعدادات الموقع العام</span>
+            <Settings className="h-4 w-4 shrink-0" />
+            <span>إعدادات الموقع</span>
           </button>
         </aside>
 
         {/* Content Panel Area */}
-        <main className="flex-1 bg-slate-900 overflow-y-auto p-4 sm:p-8">
+        <main className="flex-1 bg-slate-900 overflow-y-auto p-4 sm:p-6">
           
           {/* Internal Toast Feedback */}
           {noti && (
@@ -1059,6 +1204,78 @@ export default function AdminDashboard({
                   <span className="text-slate-400 text-xs font-black block">إجمالي المشترين الفريدين</span>
                   <h3 className="text-xl sm:text-2xl font-black mt-2 text-emerald-400 font-mono">{salesSummary.uniqueBuyersCount} عميل</h3>
                   <p className="text-[10px] text-slate-500 mt-1 font-semibold">عدد العملاء المتميزين ببيانات تواصل فريدة</p>
+                </div>
+              </div>
+
+              {/* Sales Line Chart over Days */}
+              <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                  <div>
+                    <h4 className="text-sm font-black text-white">منحنى تغير مبيعات المتجر اليومي</h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">متابعة تفصيلية لتغير عدد الطلبات والقطع المباعة يومياً</p>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs font-bold">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-full bg-brand-blue block"></span>
+                      <span className="text-slate-300">عدد الطلبيات</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-full bg-emerald-400 block"></span>
+                      <span className="text-slate-300">القطع المباعة</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="h-72 w-full pr-4" dir="ltr">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={salesOverTime} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <XAxis 
+                        dataKey="dateLabel" 
+                        stroke="#94a3b8" 
+                        fontSize={10}
+                        fontWeight="bold"
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        stroke="#94a3b8" 
+                        fontSize={10}
+                        fontWeight="bold"
+                        tickLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#020617', 
+                          borderColor: '#1e293b', 
+                          borderRadius: '12px',
+                          textAlign: 'right',
+                          direction: 'rtl',
+                          fontSize: '11px',
+                          fontWeight: 'bold'
+                        }}
+                        labelStyle={{ color: '#ffffff', fontWeight: '900', marginBottom: '4px' }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        name="عدد الطلبيات" 
+                        dataKey="ordersCount" 
+                        stroke="#2563eb" 
+                        strokeWidth={3} 
+                        activeDot={{ r: 6 }} 
+                        dot={{ r: 4 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        name="القطع المباعة" 
+                        dataKey="unitsSold" 
+                        stroke="#10b981" 
+                        strokeWidth={3} 
+                        activeDot={{ r: 6 }} 
+                        dot={{ r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
 
@@ -1253,10 +1470,14 @@ export default function AdminDashboard({
                       <div className="space-y-1.5">
                         <label className="block text-xs font-bold text-slate-400">سعر الشراء (دج)</label>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           required
                           value={prodPurchasePrice}
-                          onChange={(e) => setProdPurchasePrice(Number(e.target.value))}
+                          onChange={(e) => {
+                            const cleaned = e.target.value.replace(/[^0-9.,]/g, '');
+                            setProdPurchasePrice(cleaned);
+                          }}
                           className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-semibold focus:outline-none focus:border-brand-blue text-right text-white"
                           placeholder="مثال: 800"
                         />
@@ -1265,10 +1486,14 @@ export default function AdminDashboard({
                       <div className="space-y-1.5">
                         <label className="block text-xs font-bold text-slate-400">سعر البيع (دج)</label>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           required
                           value={prodPrice}
-                          onChange={(e) => setProdPrice(Number(e.target.value))}
+                          onChange={(e) => {
+                            const cleaned = e.target.value.replace(/[^0-9.,]/g, '');
+                            setProdPrice(cleaned);
+                          }}
                           className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-semibold focus:outline-none focus:border-brand-blue text-right text-white"
                           placeholder="مثال: 1000"
                         />
@@ -1497,11 +1722,105 @@ export default function AdminDashboard({
 
           {/* Tab 3: CATEGORIES */}
           {activeTab === 'categories' && (
-            <div className="space-y-6 text-right">
-              <div>
-                <h3 className="text-base sm:text-lg font-black text-white">إدارة تصنيفات السلع</h3>
-                <p className="text-xs text-slate-400 mt-1 font-bold">تعديل أسماء وصور تصنيفات اللوازم المدرسية</p>
+            <div className="space-y-6 text-right" dir="rtl">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white">إدارة تصنيفات السلع</h3>
+                  <p className="text-xs text-slate-400 mt-1 font-bold">إضافة وتعديل وحذف تصنيفات الأدوات واللوازم المدرسية في المتجر</p>
+                </div>
+                {!isAddingCategory && !editingCategory && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddingCategory(true);
+                      setCatName('');
+                      setCatImage('');
+                      setCatIcon('ShoppingBag');
+                    }}
+                    className="bg-brand-blue hover:bg-blue-700 text-white px-5 py-3 rounded-xl text-xs font-black shadow-md flex items-center gap-1.5 transition-all self-start"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>إضافة تصنيف جديد</span>
+                  </button>
+                )}
               </div>
+
+              {isAddingCategory && (
+                <form onSubmit={handleCategorySave} className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 animate-in slide-in-from-top duration-300">
+                  <h4 className="text-sm font-black text-white">إضافة تصنيف مدرسي جديد</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-400">اسم التصنيف الجديد</label>
+                      <input
+                        type="text"
+                        required
+                        value={catName}
+                        onChange={(e) => setCatName(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-semibold focus:outline-none focus:border-brand-blue text-right text-white"
+                        placeholder="مثال: أطقم وحزم مدرسية"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-400">رابط صورة المعاينة (رابط Drive أو عادي)</label>
+                      <div className="flex gap-3 items-center">
+                        <input
+                          type="url"
+                          value={catImage}
+                          onChange={(e) => setCatImage(convertGoogleDriveUrl(e.target.value))}
+                          className="flex-1 bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-mono text-left text-slate-200 focus:outline-none focus:border-brand-blue"
+                          placeholder="أدخل رابط صورة التصنيف (مثال: رابط Google Drive)..."
+                        />
+                        {catImage && (
+                          <div className="h-10 w-10 rounded-xl overflow-hidden border border-slate-800 bg-slate-900 shrink-0">
+                            <img src={getCompatibleImageUrl(catImage)} alt="Category Preview" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-400">اختر أيقونة التصنيف المتواجدة في الصفحة الرئيسية</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                      {Object.entries(adminIconMap).map(([key, { icon: IconComp, label }]) => {
+                        const isSelected = catIcon === key;
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => setCatIcon(key)}
+                            className={`p-3 rounded-2xl border text-center flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-brand-blue/20 border-brand-blue text-white ring-2 ring-brand-blue/25'
+                                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                            }`}
+                          >
+                            <IconComp className={`h-5 w-5 ${isSelected ? 'text-brand-blue' : ''}`} />
+                            <span className="text-[10px] font-bold truncate max-w-full">{label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2.5 pt-3">
+                    <button
+                      type="submit"
+                      className="bg-brand-blue hover:bg-blue-700 text-white px-5 py-3 rounded-xl text-xs font-black transition-all"
+                    >
+                      <span>حفظ التصنيف الجديد</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingCategory(false)}
+                      className="bg-slate-800 text-slate-300 px-5 py-3 rounded-xl text-xs font-bold"
+                    >
+                      <span>إلغاء</span>
+                    </button>
+                  </div>
+                </form>
+              )}
 
               {editingCategory && (
                 <form onSubmit={handleCategorySave} className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 animate-in slide-in-from-top duration-300">
@@ -1523,7 +1842,6 @@ export default function AdminDashboard({
                       <div className="flex gap-3 items-center">
                         <input
                           type="url"
-                          required
                           value={catImage}
                           onChange={(e) => setCatImage(convertGoogleDriveUrl(e.target.value))}
                           className="flex-1 bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-mono text-left text-slate-200 focus:outline-none focus:border-brand-blue"
@@ -1597,20 +1915,31 @@ export default function AdminDashboard({
                         <span className="text-xs font-black text-white">{cat.name}</span>
                       </div>
                       <p className="text-[10px] text-slate-500 mt-1">عدد معروضات التصنيف: <strong className="text-slate-300">{products.filter(p => p.category === cat.id).length} منتج</strong></p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingCategory(cat);
-                          setCatName(cat.name);
-                          setCatImage(cat.image);
-                          setCatCount(products.filter(p => p.category === cat.id).length);
-                          setCatIcon(cat.iconName || 'ShoppingBag');
-                        }}
-                        className="text-[10px] font-bold text-brand-blue hover:underline mt-2 flex items-center gap-1"
-                      >
-                        <Edit className="h-3 w-3" />
-                        <span>تعديل التفاصيل</span>
-                      </button>
+                      
+                      <div className="flex items-center gap-2.5 mt-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingCategory(cat);
+                            setCatName(cat.name);
+                            setCatImage(cat.image);
+                            setCatCount(products.filter(p => p.category === cat.id).length);
+                            setCatIcon(cat.iconName || 'ShoppingBag');
+                          }}
+                          className="text-[10px] font-bold text-brand-blue hover:underline flex items-center gap-1"
+                        >
+                          <Edit className="h-3 w-3" />
+                          <span>تعديل</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                          className="text-[10px] font-bold text-rose-400 hover:underline flex items-center gap-1 border-r border-slate-800 pr-2.5"
+                        >
+                          <Trash2 className="h-3 w-3 text-rose-500" />
+                          <span>حذف التصنيف</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
