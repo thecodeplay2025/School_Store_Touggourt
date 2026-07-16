@@ -153,7 +153,7 @@ export default function InfoPagesView({ pageType, onGoHome }: InfoPagesViewProps
       <Helmet>
         <title>{config.title}</title>
         <meta name="description" content={config.description} />
-        <link rel="canonical" href={`${window.location.origin}${config.canonical}`} />
+        <link rel="canonical" href={`${window.location.origin.includes('run.app') ? 'https://school-store-touggourt.netlify.app' : window.location.origin}${config.canonical}`} />
         <meta name="robots" content="index, follow" />
       </Helmet>
 

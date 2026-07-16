@@ -377,7 +377,8 @@ async function startServer() {
           reviews: REVIEWS,
           siteSettings: SITE_SETTINGS,
           packs: PACKS,
-          visitors: { count: 4850 }
+          visitors: { count: 4850 },
+          affiliates: []
         };
         fs.writeFileSync(DB_FILE, JSON.stringify(initialState, null, 2), "utf8");
         return initialState;
@@ -395,7 +396,8 @@ async function startServer() {
         reviews: REVIEWS,
         siteSettings: SITE_SETTINGS,
         packs: PACKS,
-        visitors: { count: 4850 }
+        visitors: { count: 4850 },
+        affiliates: []
       };
     }
   };
@@ -457,7 +459,7 @@ async function startServer() {
     }
 
     try {
-      const [products, categories, municipalities, orders, users, reviews, siteSettings, packs, visitors] = await Promise.all([
+      const [products, categories, municipalities, orders, users, reviews, siteSettings, packs, visitors, affiliates] = await Promise.all([
         getCollectionData('products', localDb.products),
         getCollectionData('categories', localDb.categories),
         getCollectionData('municipalities', localDb.municipalities),
@@ -467,6 +469,7 @@ async function startServer() {
         getCollectionData('siteSettings', localDb.siteSettings),
         getCollectionData('packs', localDb.packs),
         getCollectionData('visitors', localDb.visitors || { count: 4850 }),
+        getCollectionData('affiliates', localDb.affiliates || []),
       ]);
 
       const dbState = {
@@ -478,7 +481,8 @@ async function startServer() {
         reviews,
         siteSettings,
         packs,
-        visitors
+        visitors,
+        affiliates
       };
 
       // Keep local backup synchronized

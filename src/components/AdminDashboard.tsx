@@ -36,7 +36,7 @@ import {
   Palette,
   Cpu
 } from 'lucide-react';
-import { Product, Category, Municipality, Order, User, Review, SiteSettings } from '../types';
+import { Product, Category, Municipality, Order, User, Review, SiteSettings, Affiliate } from '../types';
 import { convertGoogleDriveUrl, getCompatibleImageUrl } from '../utils/imageHelper';
 import {
   ResponsiveContainer,
@@ -70,7 +70,13 @@ interface AdminDashboardProps {
   onUpdateSiteSettings: (settings: SiteSettings) => void;
   onLogout: () => void;
   formatPrice: (price: number) => string;
+  affiliates: Affiliate[];
+  onUpdateAffiliates: (affiliates: Affiliate[]) => void;
 }
+
+const getPublicOrigin = () => {
+  return 'https://school-store-touggourt.netlify.app';
+};
 
 const adminIconMap: Record<string, { icon: React.ComponentType<any>; label: string }> = {
   ShoppingBag: { icon: ShoppingBag, label: 'حقيبة مدرسية' },
@@ -101,9 +107,11 @@ export default function AdminDashboard({
   onUpdateReviews,
   onUpdateSiteSettings,
   onLogout,
-  formatPrice
+  formatPrice,
+  affiliates = [],
+  onUpdateAffiliates
 }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'categories' | 'orders' | 'customers' | 'shipping' | 'offers' | 'reviews' | 'settings' | 'packs' | 'sales_stats'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'categories' | 'orders' | 'customers' | 'shipping' | 'offers' | 'reviews' | 'settings' | 'packs' | 'sales_stats' | 'affiliates'>('overview');
   
   // Selected Order for details modal
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -111,7 +119,7 @@ export default function AdminDashboard({
   // Custom Delete Confirmation Modal State
   const [deleteConfirm, setDeleteConfirm] = useState<{
     id: string;
-    type: 'product' | 'order' | 'pack' | 'visitors_reset' | 'category';
+    type: 'product' | 'order' | 'pack' | 'visitors_reset' | 'category' | 'affiliate';
     title: string;
     message: string;
   } | null>(null);
@@ -201,6 +209,15 @@ export default function AdminDashboard({
   const [setThreshold, setSetThreshold] = useState(siteSettings.freeShippingThreshold);
   const [setBannerText, setSetBannerText] = useState(siteSettings.promoBannerText);
   const [setLogoUrl, setSetLogoUrl] = useState(siteSettings.logoUrl || '');
+  const [setCommissionRate, setSetCommissionRate] = useState(siteSettings.referralCommissionRate || 10);
+
+  // --- AFFILIATES FORM STATES ---
+  const [isAddingAffiliate, setIsAddingAffiliate] = useState(false);
+  const [editingAffiliate, setEditingAffiliate] = useState<Affiliate | null>(null);
+  const [affiliateName, setAffiliateName] = useState('');
+  const [affiliateCode, setAffiliateCode] = useState('');
+  const [affiliateCommissionRate, setAffiliateCommissionRate] = useState<string>('');
+  const [affiliatesSearch, setAffiliatesSearch] = useState('');
 
   // --- SALES STATISTICS COMPUTATIONS ---
   const processedStats = useMemo(() => {
@@ -533,7 +550,8 @@ export default function AdminDashboard({
       warehouseAddress: setWarehouse,
       freeShippingThreshold: setThreshold,
       promoBannerText: setBannerText,
-      logoUrl: setLogoUrl || undefined
+      logoUrl: setLogoUrl || undefined,
+      referralCommissionRate: Number(setCommissionRate)
     });
     triggerNoti('تم حفظ إعدادات الموقع وتطبيقها على المتجر بنجاح!');
   };
@@ -642,6 +660,86 @@ export default function AdminDashboard({
 
   // Order status update
   const handleUpdateOrderStatus = (orderId: string, newStatus: Order['status']) => {
+    console.log(`[AFFILIATE TRACE] Start handleUpdateOrderStatus for orderId: ${orderId}, newStatus: ${newStatus}`);
+    
+    const originalOrder = orders.find(o => o.id === orderId);
+    if (!originalOrder) {
+      console.error(`[AFFILIATE TRACE] [FAIL] Order with ID ${orderId} not found in the orders list.`);
+      return;
+    }
+
+    let updatedOrders = [...orders];
+    let updatedAffiliates = [...affiliates];
+
+    const isMovingToDelivered = (newStatus === 'delivered' || (newStatus as string) === 'completed');
+
+    console.log(`[AFFILIATE TRACE] Order total: ${originalOrder.total}, Referrer code: ${originalOrder.referrer || 'None'}, Already calculated: ${originalOrder.commissionCalculated || false}`);
+
+    if (isMovingToDelivered) {
+      if (originalOrder.referrer) {
+        if (!originalOrder.commissionCalculated) {
+          const code = originalOrder.referrer.trim().toUpperCase();
+          console.log(`[AFFILIATE TRACE] Searching for affiliate with code: "${code}"`);
+          const affiliateIndex = updatedAffiliates.findIndex(a => a.code.toUpperCase() === code);
+
+          if (affiliateIndex !== -1) {
+            const affiliateObj = updatedAffiliates[affiliateIndex];
+            const rate = (affiliateObj.commissionRate !== undefined && affiliateObj.commissionRate !== null)
+              ? affiliateObj.commissionRate
+              : (siteSettings.referralCommissionRate || 10);
+            const commission = Math.round(originalOrder.total * (rate / 100));
+
+            console.log(`[AFFILIATE TRACE] Found affiliate!`);
+            console.log(`[AFFILIATE TRACE] Name: ${affiliateObj.name}`);
+            console.log(`[AFFILIATE TRACE] Affiliate Code: ${affiliateObj.code}`);
+            console.log(`[AFFILIATE TRACE] Commission rate applied: ${rate}%`);
+            console.log(`[AFFILIATE TRACE] Calculated commission: ${commission} DA`);
+
+            // Update affiliate stats
+            updatedAffiliates = updatedAffiliates.map((aff, idx) => {
+              if (idx === affiliateIndex) {
+                const prevBalance = aff.commissionBalance || 0;
+                const prevSales = aff.totalSales || 0;
+                const prevOrders = aff.totalOrders || 0;
+                
+                return {
+                  ...aff,
+                  commissionBalance: prevBalance + commission,
+                  totalSales: prevSales + originalOrder.total,
+                  totalOrders: prevOrders + 1
+                };
+              }
+              return aff;
+            });
+
+            // Update orders to mark as calculated
+            updatedOrders = orders.map(o => o.id === orderId ? { 
+              ...o, 
+              status: newStatus, 
+              commissionCalculated: true,
+              commissionAmount: commission
+            } : o);
+
+            try {
+              onUpdateAffiliates(updatedAffiliates);
+              onUpdateOrders(updatedOrders);
+              console.log(`[AFFILIATE TRACE] [SUCCESS] Successfully updated affiliate stats and order status!`);
+              triggerNoti(`تم توصيل الطلبية واحتساب عمولة بقيمة ${formatPrice(commission)} للمسوّق ${updatedAffiliates[affiliateIndex].name}`);
+            } catch (err: any) {
+              console.error(`[AFFILIATE TRACE] [FAIL] Error calling state update functions:`, err);
+            }
+            return;
+          } else {
+            console.error(`[AFFILIATE TRACE] [FAIL] Affiliate with code "${code}" was not found in the affiliates database.`);
+          }
+        } else {
+          console.warn(`[AFFILIATE TRACE] [SKIP] Commission already calculated for order ${orderId} (commissionCalculated is true). Skipping duplicate calculation.`);
+        }
+      } else {
+        console.log(`[AFFILIATE TRACE] [SKIP] Order ${orderId} was delivered but does not have a referrer code.`);
+      }
+    }
+
     const updated = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
     onUpdateOrders(updated);
     triggerNoti(`تم تغيير حالة الطلبية رقم ${orderId} بنجاح`);
@@ -683,8 +781,29 @@ export default function AdminDashboard({
       const updated = categories.filter(c => c.id !== id);
       onUpdateCategories(updated);
       triggerNoti('تم حذف التصنيف بنجاح');
+    } else if (type === 'affiliate') {
+      const updated = affiliates.filter(a => a.id !== id);
+      onUpdateAffiliates(updated);
+      triggerNoti('تم حذف المسوق بالعمولة بنجاح');
     }
     setDeleteConfirm(null);
+  };
+
+  const startEditAffiliate = (aff: Affiliate) => {
+    setEditingAffiliate(aff);
+    setAffiliateName(aff.name);
+    setAffiliateCode(aff.code);
+    setAffiliateCommissionRate(aff.commissionRate !== undefined && aff.commissionRate !== null ? String(aff.commissionRate) : '');
+    setIsAddingAffiliate(true);
+  };
+
+  const handleDeleteAffiliate = (id: string, name: string) => {
+    setDeleteConfirm({
+      id,
+      type: 'affiliate',
+      title: 'حذف المسوّق بالكامل 🗑️',
+      message: `هل أنت متأكد من حذف المسوق "${name}"؟ سيتم حذف بياناته وسجله بالكامل من لوحة التحكم.`
+    });
   };
 
   // --- PACK FORM ACTIONS ---
@@ -1046,6 +1165,19 @@ export default function AdminDashboard({
           >
             <MapPin className="h-4 w-4 shrink-0" />
             <span>البلديات والشحن</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('affiliates')}
+            className={`w-full text-right px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
+              activeTab === 'affiliates' ? 'bg-brand-blue text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 shrink-0" />
+              <span>المسوّقون بالعمولة</span>
+            </div>
+            <span className="bg-slate-800 text-[10px] text-slate-300 font-bold px-2 py-0.5 rounded-full">{affiliates?.length || 0}</span>
           </button>
 
           <button
@@ -2196,6 +2328,19 @@ export default function AdminDashboard({
                 </div>
 
                 <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-slate-400">نسبة عمولة التسويق بالإحالة (%)</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    max="100"
+                    value={setCommissionRate}
+                    onChange={(e) => setSetCommissionRate(Number(e.target.value))}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-bold text-white text-right"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-400">رقم الهاتف الأول</label>
                   <input
                     type="tel"
@@ -2626,6 +2771,303 @@ export default function AdminDashboard({
             </div>
           )}
 
+          {/* Tab 11: AFFILIATES (REFERRAL SYSTEM) */}
+          {activeTab === 'affiliates' && (
+            <div className="space-y-6 text-right animate-in fade-in-50 duration-200" dir="rtl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                    <Users className="h-5 w-5 text-brand-blue" />
+                    <span>نظام التسويق بالعمولة والإحالة (Affiliates)</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1 font-bold">
+                    أضف مسوقين جدد، وتابع مبيعاتهم، عمولاتهم ورابط الإحالة الخاص بهم دون الحاجة لإنشاء حسابات.
+                  </p>
+                </div>
+                {!isAddingAffiliate && (
+                  <button
+                    onClick={() => {
+                      setEditingAffiliate(null);
+                      setAffiliateName('');
+                      setAffiliateCode('MIDAD' + Math.floor(10 + Math.random() * 90));
+                      setIsAddingAffiliate(true);
+                    }}
+                    className="bg-brand-blue hover:bg-blue-700 text-white px-5 py-3 rounded-2xl text-xs font-black transition-all flex items-center gap-1.5 self-start sm:self-center cursor-pointer shadow-lg shadow-brand-blue/10"
+                  >
+                    <span>➕ إضافة مسوّق جديد</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Stats Overview Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-slate-950 border border-slate-800 p-4.5 rounded-2xl">
+                  <span className="text-[10px] text-slate-400 font-bold block">إجمالي المسوقين</span>
+                  <span className="text-xl font-black text-white block mt-1 font-mono">{affiliates?.length || 0}</span>
+                </div>
+                <div className="bg-slate-950 border border-slate-800 p-4.5 rounded-2xl">
+                  <span className="text-[10px] text-slate-400 font-bold block">إجمالي المبيعات المحالة</span>
+                  <span className="text-xl font-black text-brand-blue block mt-1 font-mono">
+                    {formatPrice(affiliates?.reduce((sum, a) => sum + (a.totalSales || 0), 0) || 0)}
+                  </span>
+                </div>
+                <div className="bg-slate-950 border border-slate-800 p-4.5 rounded-2xl">
+                  <span className="text-[10px] text-slate-400 font-bold block">إجمالي العمولات المستحقة</span>
+                  <span className="text-xl font-black text-emerald-400 block mt-1 font-mono">
+                    {formatPrice(affiliates?.reduce((sum, a) => sum + (a.commissionBalance || 0), 0) || 0)}
+                  </span>
+                </div>
+                <div className="bg-slate-950 border border-slate-800 p-4.5 rounded-2xl">
+                  <span className="text-[10px] text-slate-400 font-bold block">إجمالي الطلبات المحالة</span>
+                  <span className="text-xl font-black text-purple-400 block mt-1 font-mono">
+                    {affiliates?.reduce((sum, a) => sum + (a.totalOrders || 0), 0) || 0} طلبية
+                  </span>
+                </div>
+              </div>
+
+              {isAddingAffiliate ? (
+                /* ADD / EDIT AFFILIATE FORM */
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!affiliateName.trim() || !affiliateCode.trim()) {
+                    triggerNoti('يرجى ملء كافة الحقول الإلزامية', 'info');
+                    return;
+                  }
+                  const cleanCode = affiliateCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+                  if (!cleanCode) {
+                    triggerNoti('يرجى كتابة رمز إحالة صحيح يتكون من حروف وأرقام فقط', 'info');
+                    return;
+                  }
+
+                  const rateVal = affiliateCommissionRate.trim() !== '' ? Number(affiliateCommissionRate) : undefined;
+
+                  let updatedList = [...affiliates];
+                  if (editingAffiliate) {
+                    // check duplicates
+                    const isDup = affiliates.some(a => a.id !== editingAffiliate.id && a.code.toUpperCase() === cleanCode);
+                    if (isDup) {
+                      triggerNoti('رمز الإحالة هذا مستخدم بالفعل لمسوّق آخر!', 'info');
+                      return;
+                    }
+                    updatedList = affiliates.map(a => a.id === editingAffiliate.id ? {
+                      ...a,
+                      code: cleanCode,
+                      name: affiliateName.trim(),
+                      commissionRate: rateVal
+                    } : a);
+                    triggerNoti('تم تعديل بيانات المسوّق بنجاح');
+                  } else {
+                    const isDup = affiliates.some(a => a.code.toUpperCase() === cleanCode);
+                    if (isDup) {
+                      triggerNoti('رمز الإحالة هذا مستخدم بالفعل لمسوّق آخر!', 'info');
+                      return;
+                    }
+                    const newAff: Affiliate = {
+                      id: cleanCode,
+                      code: cleanCode,
+                      name: affiliateName.trim(),
+                      commissionBalance: 0,
+                      totalSales: 0,
+                      totalOrders: 0,
+                      createdAt: new Date().toLocaleDateString('ar-DZ', { year: 'numeric', month: 'long', day: 'numeric' }),
+                      commissionRate: rateVal
+                    };
+                    updatedList.push(newAff);
+                    triggerNoti('تم تسجيل المسوّق الجديد بنجاح');
+                  }
+
+                  onUpdateAffiliates(updatedList);
+                  setIsAddingAffiliate(false);
+                  setEditingAffiliate(null);
+                  setAffiliateName('');
+                  setAffiliateCode('');
+                  setAffiliateCommissionRate('');
+                }} className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-6 max-w-xl text-right">
+                  <div>
+                    <h4 className="text-sm font-black text-white">
+                      {editingAffiliate ? 'تعديل بيانات المسوّق' : 'إضافة مسوّق جديد بالعمولة'}
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-1 font-bold">
+                      يرجى تحديد الاسم والرمز التعريفي الفريد لرابط الإحالة ونسبة العمولة.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-400">الاسم الكامل للمسوّق</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="مثال: خالد بوزيدي"
+                        value={affiliateName}
+                        onChange={(e) => setAffiliateName(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-bold text-white text-right focus:border-brand-blue focus:outline-none font-sans"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-400">رمز الإحالة التعريفي (Alphanumeric Code)</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="مثال: KHALED01"
+                        value={affiliateCode}
+                        onChange={(e) => setAffiliateCode(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-mono font-black text-white text-right focus:border-brand-blue focus:outline-none"
+                      />
+                      <p className="text-[10px] text-slate-500 font-bold">سيظهر الرمز في الرابط كـ: {`${getPublicOrigin()}/?ref=${affiliateCode.trim().toUpperCase() || 'CODE'}`}</p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-400">نسبة عمولة المسوّق (%) <span className="text-slate-500 font-normal">(اختياري)</span></label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        placeholder={`الافتراضية للموقع: ${siteSettings.referralCommissionRate || 10}%`}
+                        value={affiliateCommissionRate}
+                        onChange={(e) => setAffiliateCommissionRate(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-bold text-white text-right focus:border-brand-blue focus:outline-none"
+                      />
+                      <p className="text-[10px] text-slate-500 font-bold">اتركه فارغاً ليتم اعتماد النسبة العامة المضبوطة في إعدادات الموقع.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t border-slate-900 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAddingAffiliate(false);
+                        setEditingAffiliate(null);
+                        setAffiliateName('');
+                        setAffiliateCode('');
+                        setAffiliateCommissionRate('');
+                      }}
+                      className="bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-white px-5 py-3 rounded-2xl text-xs font-black transition-all cursor-pointer"
+                    >
+                      إلغاء والتراجع
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-brand-blue hover:bg-blue-700 text-white px-6 py-3 rounded-2xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <span>حفظ المسوّق 💾</span>
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                /* AFFILIATES TABLE LIST */
+                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 text-right">
+                  {/* Search and filter row */}
+                  <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
+                    <div className="relative w-full sm:max-w-xs">
+                      <input
+                        type="text"
+                        placeholder="ابحث عن مسوق بالاسم أو الرمز..."
+                        value={affiliatesSearch}
+                        onChange={(e) => setAffiliatesSearch(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 pr-10 pl-4 text-xs font-bold text-white text-right focus:border-brand-blue focus:outline-none"
+                      />
+                      <Search className="h-4 w-4 text-slate-500 absolute right-3.5 top-3" />
+                    </div>
+                  </div>
+
+                  {affiliates.length === 0 ? (
+                    <div className="text-center py-16">
+                      <div className="bg-slate-900 text-slate-600 p-5 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 border border-slate-800">
+                        <Users className="h-8 w-8 text-brand-blue" />
+                      </div>
+                      <h4 className="text-sm font-black text-white">لا يوجد مسوقون مسجلون حالياً</h4>
+                      <p className="text-[11px] text-slate-500 mt-2 max-w-sm mx-auto font-bold leading-normal">
+                        أضف مسوقين يدويًا، شارك روابط الإحالة معهم، وتابع العمولات المترتبة على كل طلبية مستلمة بنجاح!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-right border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-850 text-slate-400 font-black">
+                            <th className="pb-3 pt-2 font-black pr-2 text-right">المسوّق</th>
+                            <th className="pb-3 pt-2 font-black text-right">كود الإحالة</th>
+                            <th className="pb-3 pt-2 font-black text-right">إجمالي الطلبات</th>
+                            <th className="pb-3 pt-2 font-black text-right">إجمالي المبيعات</th>
+                            <th className="pb-3 pt-2 font-black text-right text-emerald-400">العمولة الحالية</th>
+                            <th className="pb-3 pt-2 font-black pl-2 text-left">رابط الإحالة والعمليات</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-900 font-bold text-slate-200">
+                          {affiliates
+                            .filter(a => {
+                              if (!affiliatesSearch) return true;
+                              const s = affiliatesSearch.toLowerCase();
+                              return a.name.toLowerCase().includes(s) || a.code.toLowerCase().includes(s);
+                            })
+                            .map((aff) => {
+                              const refUrl = `${getPublicOrigin()}/?ref=${aff.code}`;
+                              return (
+                                <tr key={aff.id} className="hover:bg-slate-900/30 transition-colors">
+                                  <td className="py-3.5 pr-2 font-black text-right">
+                                    <div className="flex items-center gap-2 justify-start">
+                                      <div className="h-8 w-8 rounded-full bg-brand-blue/10 border border-brand-blue/20 flex items-center justify-center text-brand-blue font-black text-xs shrink-0">
+                                        {aff.name.trim().charAt(0)}
+                                      </div>
+                                      <div className="text-right">
+                                        <span className="block text-white text-xs">{aff.name}</span>
+                                        <span className="text-[10px] text-slate-500 block">
+                                          العمولة: {aff.commissionRate !== undefined && aff.commissionRate !== null ? `${aff.commissionRate}%` : `${siteSettings.referralCommissionRate || 10}% (عامة)`}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="py-3.5 font-mono font-black text-slate-300 text-right">
+                                    <span className="bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">
+                                      {aff.code}
+                                    </span>
+                                  </td>
+                                  <td className="py-3.5 font-mono text-right">{aff.totalOrders || 0} طلب</td>
+                                  <td className="py-3.5 font-mono text-slate-300 text-right">{formatPrice(aff.totalSales || 0)}</td>
+                                  <td className="py-3.5 font-mono text-emerald-400 font-black text-sm text-right">{formatPrice(aff.commissionBalance || 0)}</td>
+                                  <td className="py-3.5 pl-2 text-left">
+                                    <div className="flex items-center gap-2 justify-end">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(refUrl);
+                                          triggerNoti('تم نسخ رابط الإحالة بنجاح 🔗');
+                                        }}
+                                        className="bg-brand-blue/10 hover:bg-brand-blue/25 text-brand-blue text-[10px] font-black px-3 py-1.5 rounded-xl border border-brand-blue/20 transition-all flex items-center gap-1 cursor-pointer"
+                                        title="نسخ رابط الإحالة الفريد للمسوق"
+                                      >
+                                        <span>نسخ الرابط 🔗</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => startEditAffiliate(aff)}
+                                        className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-slate-850 transition-all cursor-pointer"
+                                      >
+                                        تعديل
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteAffiliate(aff.id, aff.name)}
+                                        className="bg-rose-500/10 hover:bg-rose-500/25 text-rose-400 text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-rose-500/20 transition-all cursor-pointer"
+                                      >
+                                        حذف
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
         </main>
       </div>
 
@@ -2691,6 +3133,24 @@ export default function AdminDashboard({
                   <span className="text-slate-500 block mb-0.5">العنوان الكامل بالتفصيل:</span>
                   <span className="font-semibold text-slate-300 leading-relaxed block">{selectedOrder.address}</span>
                 </div>
+                {selectedOrder.referrer && (
+                  <div className="sm:col-span-2 border-t border-slate-900 pt-2.5 mt-1 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                      <span className="text-slate-500 block mb-0.5">رمز المسوّق بالإحالة:</span>
+                      <span className="font-mono font-black text-brand-blue bg-brand-blue/5 px-2 py-0.5 rounded border border-brand-blue/10">
+                        {selectedOrder.referrer}
+                      </span>
+                    </div>
+                    {selectedOrder.commissionCalculated && (
+                      <div className="text-right sm:text-left">
+                        <span className="text-slate-500 block mb-0.5">العمولة المحتسبة:</span>
+                        <span className="font-black text-emerald-400 bg-emerald-400/5 px-2 py-0.5 rounded border border-emerald-500/10">
+                          {formatPrice(selectedOrder.commissionAmount || 0)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

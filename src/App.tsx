@@ -23,7 +23,7 @@ import {
   Trash2
 } from 'lucide-react';
 
-import { Product, CartItem, Order, User, Review, SiteSettings, Category, Municipality } from './types';
+import { Product, CartItem, Order, User, Review, SiteSettings, Category, Municipality, Affiliate } from './types';
 import { PRODUCTS, CATEGORIES, MUNICIPALITIES } from './data';
 
 // Components
@@ -137,6 +137,38 @@ export default function App() {
     const saved = localStorage.getItem('school_store_orders');
     return saved ? JSON.parse(saved) : [];
   });
+
+  const [affiliates, setAffiliates] = useState<Affiliate[]>(() => {
+    const saved = localStorage.getItem('school_store_affiliates');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Handle referral link parsing on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const refCode = urlParams.get('ref');
+    if (refCode) {
+      const cleanRef = refCode.trim().toUpperCase();
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 30);
+      
+      localStorage.setItem('school_store_referral_code', cleanRef);
+      localStorage.setItem('school_store_referral_expiry', expiryDate.toISOString());
+      
+      // Set document cookie for 30 days
+      document.cookie = `school_store_ref=${cleanRef}; max-age=${30 * 24 * 60 * 60}; path=/; SameSite=Lax`;
+    } else {
+      const expiryStr = localStorage.getItem('school_store_referral_expiry');
+      if (expiryStr) {
+        const expiry = new Date(expiryStr);
+        if (expiry.getTime() < Date.now()) {
+          localStorage.removeItem('school_store_referral_code');
+          localStorage.removeItem('school_store_referral_expiry');
+          document.cookie = "school_store_ref=; max-age=0; path=/";
+        }
+      }
+    }
+  }, []);
 
   const [packs, setPacks] = useState<Product[]>(() => {
     const saved = localStorage.getItem('school_store_packs');
@@ -308,6 +340,12 @@ export default function App() {
           }
           if (data.packs) setPacks(data.packs);
           if (data.orders) setRecentOrders(data.orders);
+          if (data.affiliates) {
+            setAffiliates(data.affiliates);
+            loadedKeys.current.add('affiliates');
+          } else {
+            loadedKeys.current.add('affiliates');
+          }
           if (data.visitors && typeof data.visitors.count === 'number') {
             setVisitorsCount(data.visitors.count);
           }
@@ -372,6 +410,7 @@ export default function App() {
       { key: 'settings', setter: setSiteSettings },
       { key: 'packs', setter: setPacks },
       { key: 'orders', setter: setRecentOrders },
+      { key: 'affiliates', setter: setAffiliates },
       { key: 'visitors', setter: () => {} }
     ];
 
@@ -517,6 +556,7 @@ export default function App() {
               if (data.users) setAllUsers(data.users);
               if (data.siteSettings) setSiteSettings(data.siteSettings);
               if (data.municipalities) setMunicipalities(data.municipalities);
+              if (data.affiliates) setAffiliates(data.affiliates);
             }
           })
           .catch(err => console.error('Error polling database updates:', err));
@@ -571,6 +611,16 @@ export default function App() {
       }
     }
   }, [allUsers]);
+
+  useEffect(() => {
+    localStorage.setItem('school_store_affiliates', JSON.stringify(affiliates));
+    if (!isInitialLoad.current && loadedKeys.current.has('affiliates')) {
+      const stringified = JSON.stringify(affiliates);
+      if (lastServerData.current['affiliates'] !== stringified) {
+        saveToServer('affiliates', affiliates);
+      }
+    }
+  }, [affiliates]);
 
   useEffect(() => {
     localStorage.setItem('school_store_reviews', JSON.stringify(reviews));
@@ -1004,6 +1054,8 @@ export default function App() {
         onUpdateMunicipalities={setMunicipalities}
         onUpdateReviews={setReviews}
         onUpdateSiteSettings={setSiteSettings}
+        affiliates={affiliates}
+        onUpdateAffiliates={setAffiliates}
         onLogout={() => {
           setCurrentUser(null);
           setCurrentView('home');

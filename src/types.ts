@@ -54,6 +54,9 @@ export interface Order {
   total: number;
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered';
   date: string;
+  referrer?: string;
+  commissionCalculated?: boolean;
+  commissionAmount?: number;
 }
 
 export interface User {
@@ -87,4 +90,16 @@ export interface SiteSettings {
   freeShippingThreshold: number;
   promoBannerText: string;
   logoUrl?: string;
+  referralCommissionRate?: number; // percentage, e.g. 10 for 10%
+}
+
+export interface Affiliate {
+  id: string; // matches code
+  code: string; // e.g. KHALED01
+  name: string;
+  commissionBalance: number;
+  totalSales: number;
+  totalOrders: number;
+  createdAt: string;
+  commissionRate?: number; // specific percentage if set
 }

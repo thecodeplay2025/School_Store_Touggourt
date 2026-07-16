@@ -23,7 +23,7 @@ export default function SEO({
   const defaultDesc = 'مداد (midad) - وجهتك الإلكترونية الأولى لشراء كافة اللوازم والمستلزمات المدرسية والأكاديمية بأفضل الأسعار. حقائب، دفاتر، أقلام، وآلات حاسبة.';
   const defaultImage = 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&q=80&w=600'; // Default bag/store image
 
-  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://midad-store.netlify.app';
+  const currentOrigin = typeof window !== 'undefined' && !window.location.origin.includes('run.app') ? window.location.origin : 'https://school-store-touggourt.netlify.app';
   const canonicalUrl = `${currentOrigin}${canonicalPath}`;
 
   const metaTitle = title ? `${title} | ${siteName}` : siteName;

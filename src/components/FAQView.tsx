@@ -68,7 +68,7 @@ export default function FAQView() {
       <Helmet>
         <title>الأسئلة الشائعة والجواب الشافي | midad - مداد</title>
         <meta name="description" content="إليك كافة الأجوبة حول توصيل الأدوات المدرسية والباكات بولاية توقرت، طرق الدفع، جودة المنتجات، وإجراءات الطلب السريع." />
-        <link rel="canonical" href={`${window.location.origin}/faq`} />
+        <link rel="canonical" href={`${window.location.origin.includes('run.app') ? 'https://school-store-touggourt.netlify.app' : window.location.origin}/faq`} />
         <script type="application/ld+json">
           {JSON.stringify(faqSchema)}
         </script>

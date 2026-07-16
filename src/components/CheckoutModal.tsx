@@ -79,6 +79,7 @@ export default function CheckoutModal({
 
     // Simulate database insertion & loading
     setTimeout(() => {
+      const storedRef = localStorage.getItem('school_store_referral_code') || undefined;
       const generatedOrder: Order = {
         id: 'STS-' + Math.floor(100000 + Math.random() * 900000),
         customerName: name,
@@ -88,7 +89,8 @@ export default function CheckoutModal({
         items: [...cart],
         total: total,
         status: 'pending',
-        date: new Date().toLocaleDateString('ar-DZ', { year: 'numeric', month: 'long', day: 'numeric' })
+        date: new Date().toLocaleDateString('ar-DZ', { year: 'numeric', month: 'long', day: 'numeric' }),
+        referrer: storedRef
       };
 
       setIsSubmitting(false);
