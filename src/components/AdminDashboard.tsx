@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { Product, Category, Municipality, Order, User, Review, SiteSettings, Affiliate } from '../types';
 import { convertGoogleDriveUrl, getCompatibleImageUrl } from '../utils/imageHelper';
+import { updateOrderStatusAtomic } from '../lib/firebase';
 import {
   ResponsiveContainer,
   LineChart,
@@ -659,90 +660,57 @@ export default function AdminDashboard({
   };
 
   // Order status update
-  const handleUpdateOrderStatus = (orderId: string, newStatus: Order['status']) => {
-    console.log(`[AFFILIATE TRACE] Start handleUpdateOrderStatus for orderId: ${orderId}, newStatus: ${newStatus}`);
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+    console.log(`%c[REFERRAL TRACE - STATUS UPDATE] Admin triggered status update...`, "color: #eab308; font-weight: bold;");
+    console.log(`[REFERRAL TRACE - STATUS UPDATE] Order ID: "${orderId}", New Target Status: "${newStatus}"`);
     
     const originalOrder = orders.find(o => o.id === orderId);
     if (!originalOrder) {
-      console.error(`[AFFILIATE TRACE] [FAIL] Order with ID ${orderId} not found in the orders list.`);
+      console.error(`[REFERRAL TRACE - STATUS UPDATE] [FAIL] Order with ID ${orderId} not found in local orders state.`);
       return;
     }
 
-    let updatedOrders = [...orders];
-    let updatedAffiliates = [...affiliates];
+    console.log(`[REFERRAL TRACE - STATUS UPDATE] Order Info:`);
+    console.log(`   - Customer Name: "${originalOrder.customerName}"`);
+    console.log(`   - Current Status: "${originalOrder.status}"`);
+    console.log(`   - Referrer Code in Order: "${originalOrder.referrer || 'None'}"`);
+    console.log(`   - Total Order Value: ${originalOrder.total} DA`);
+    console.log(`   - Has Commission Been Calculated Already?: ${originalOrder.commissionCalculated || false}`);
 
     const isMovingToDelivered = (newStatus === 'delivered' || (newStatus as string) === 'completed');
+    let commission = 0;
 
-    console.log(`[AFFILIATE TRACE] Order total: ${originalOrder.total}, Referrer code: ${originalOrder.referrer || 'None'}, Already calculated: ${originalOrder.commissionCalculated || false}`);
-
-    if (isMovingToDelivered) {
-      if (originalOrder.referrer) {
-        if (!originalOrder.commissionCalculated) {
-          const code = originalOrder.referrer.trim().toUpperCase();
-          console.log(`[AFFILIATE TRACE] Searching for affiliate with code: "${code}"`);
-          const affiliateIndex = updatedAffiliates.findIndex(a => a.code.toUpperCase() === code);
-
-          if (affiliateIndex !== -1) {
-            const affiliateObj = updatedAffiliates[affiliateIndex];
-            const rate = (affiliateObj.commissionRate !== undefined && affiliateObj.commissionRate !== null)
-              ? affiliateObj.commissionRate
-              : (siteSettings.referralCommissionRate || 10);
-            const commission = Math.round(originalOrder.total * (rate / 100));
-
-            console.log(`[AFFILIATE TRACE] Found affiliate!`);
-            console.log(`[AFFILIATE TRACE] Name: ${affiliateObj.name}`);
-            console.log(`[AFFILIATE TRACE] Affiliate Code: ${affiliateObj.code}`);
-            console.log(`[AFFILIATE TRACE] Commission rate applied: ${rate}%`);
-            console.log(`[AFFILIATE TRACE] Calculated commission: ${commission} DA`);
-
-            // Update affiliate stats
-            updatedAffiliates = updatedAffiliates.map((aff, idx) => {
-              if (idx === affiliateIndex) {
-                const prevBalance = aff.commissionBalance || 0;
-                const prevSales = aff.totalSales || 0;
-                const prevOrders = aff.totalOrders || 0;
-                
-                return {
-                  ...aff,
-                  commissionBalance: prevBalance + commission,
-                  totalSales: prevSales + originalOrder.total,
-                  totalOrders: prevOrders + 1
-                };
-              }
-              return aff;
-            });
-
-            // Update orders to mark as calculated
-            updatedOrders = orders.map(o => o.id === orderId ? { 
-              ...o, 
-              status: newStatus, 
-              commissionCalculated: true,
-              commissionAmount: commission
-            } : o);
-
-            try {
-              onUpdateAffiliates(updatedAffiliates);
-              onUpdateOrders(updatedOrders);
-              console.log(`[AFFILIATE TRACE] [SUCCESS] Successfully updated affiliate stats and order status!`);
-              triggerNoti(`تم توصيل الطلبية واحتساب عمولة بقيمة ${formatPrice(commission)} للمسوّق ${updatedAffiliates[affiliateIndex].name}`);
-            } catch (err: any) {
-              console.error(`[AFFILIATE TRACE] [FAIL] Error calling state update functions:`, err);
-            }
-            return;
-          } else {
-            console.error(`[AFFILIATE TRACE] [FAIL] Affiliate with code "${code}" was not found in the affiliates database.`);
-          }
-        } else {
-          console.warn(`[AFFILIATE TRACE] [SKIP] Commission already calculated for order ${orderId} (commissionCalculated is true). Skipping duplicate calculation.`);
-        }
-      } else {
-        console.log(`[AFFILIATE TRACE] [SKIP] Order ${orderId} was delivered but does not have a referrer code.`);
-      }
+    if (isMovingToDelivered && originalOrder.referrer && !originalOrder.commissionCalculated) {
+      const code = originalOrder.referrer.trim().toUpperCase();
+      console.log(`[REFERRAL TRACE - STATUS UPDATE] Order is transitioning to delivered/completed & has active referrer "${code}". Finding commission rate...`);
+      const affiliateObj = affiliates.find(a => a.code.toUpperCase() === code);
+      const rate = affiliateObj && (affiliateObj.commissionRate !== undefined && affiliateObj.commissionRate !== null)
+        ? affiliateObj.commissionRate
+        : (siteSettings.referralCommissionRate || 10);
+      commission = Math.round(originalOrder.total * (rate / 100));
+      console.log(`[REFERRAL TRACE - STATUS UPDATE] Calculated commission for code "${code}": ${commission} DA (Rate used: ${rate}%)`);
+    } else {
+      console.log(`[REFERRAL TRACE - STATUS UPDATE] No commission calculation triggers met for this status update.`);
     }
 
-    const updated = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
-    onUpdateOrders(updated);
-    triggerNoti(`تم تغيير حالة الطلبية رقم ${orderId} بنجاح`);
+    try {
+      await updateOrderStatusAtomic(
+        orderId, 
+        newStatus, 
+        commission, 
+        originalOrder.referrer || "", 
+        originalOrder.total
+      );
+
+      triggerNoti(`تم تغيير حالة الطلبية رقم ${orderId} بنجاح`);
+      if (commission > 0) {
+        const affiliateName = affiliates.find(a => a.code.toUpperCase() === (originalOrder.referrer || "").trim().toUpperCase())?.name || originalOrder.referrer;
+        triggerNoti(`تم توصيل الطلبية واحتساب عمولة بقيمة ${formatPrice(commission)} للمسوّق ${affiliateName}`);
+      }
+    } catch (err: any) {
+      console.error("[REFERRAL TRACE - STATUS UPDATE] [ERROR] updateOrderStatusAtomic failed:", err);
+      triggerNoti(`فشل تحديث حالة الطلبية: ${err.message || err}`, "info");
+    }
   };
 
   // Delete Order

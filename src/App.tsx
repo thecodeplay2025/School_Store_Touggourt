@@ -40,12 +40,13 @@ import SEO from './components/SEO';
 import NotFoundView from './components/NotFoundView';
 import InfoPagesView from './components/InfoPagesView';
 import FAQView from './components/FAQView';
+import AffiliatePortalModal from './components/AffiliatePortalModal';
 
 import AuthView from './components/AuthView';
 import UserProfileView from './components/UserProfileView';
 import AdminDashboard from './components/AdminDashboard';
 import { getCompatibleImageUrl } from './utils/imageHelper';
-import { saveDoc, getDocData, subscribeDoc } from './lib/firebase';
+import { saveDoc, getDocData, subscribeDoc, saveDocument, updateOrderStatusAtomic, initializeCollectionsIfEmpty, incrementVisitors, subscribeCollection } from './lib/firebase';
 import midadLogo from './assets/images/midad_logo.png';
 
 
@@ -145,6 +146,7 @@ export default function App() {
 
   // Handle referral link parsing on mount
   useEffect(() => {
+    console.log("[REFERRAL TRACE] [MOUNT] Checking URL parameters for referral code...");
     const urlParams = new URLSearchParams(window.location.search);
     const refCode = urlParams.get('ref');
     if (refCode) {
@@ -152,19 +154,25 @@ export default function App() {
       const expiryDate = new Date();
       expiryDate.setDate(expiryDate.getDate() + 30);
       
+      console.log(`[REFERRAL TRACE] [MOUNT] Found 'ref' parameter in URL: "${cleanRef}". Setting localStorage and cookie for 30 days.`);
       localStorage.setItem('school_store_referral_code', cleanRef);
       localStorage.setItem('school_store_referral_expiry', expiryDate.toISOString());
       
       // Set document cookie for 30 days
       document.cookie = `school_store_ref=${cleanRef}; max-age=${30 * 24 * 60 * 60}; path=/; SameSite=Lax`;
     } else {
+      const storedRef = localStorage.getItem('school_store_referral_code');
+      console.log(`[REFERRAL TRACE] [MOUNT] No 'ref' in URL parameters. Checking localStorage: "${storedRef || 'None'}"`);
       const expiryStr = localStorage.getItem('school_store_referral_expiry');
       if (expiryStr) {
         const expiry = new Date(expiryStr);
         if (expiry.getTime() < Date.now()) {
+          console.log("[REFERRAL TRACE] [MOUNT] Referral code expired. Cleaning up localStorage and cookies.");
           localStorage.removeItem('school_store_referral_code');
           localStorage.removeItem('school_store_referral_expiry');
           document.cookie = "school_store_ref=; max-age=0; path=/";
+        } else {
+          console.log(`[REFERRAL TRACE] [MOUNT] Stored referral code "${storedRef}" is still valid until ${expiry.toLocaleString()}`);
         }
       }
     }
@@ -256,6 +264,7 @@ export default function App() {
   const [isClearCartModalOpen, setIsClearCartModalOpen] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+  const [isAffiliatePortalOpen, setIsAffiliatePortalOpen] = useState(false);
   
   // Track order form states
   const [trackOrderId, setTrackOrderId] = useState('');
@@ -273,7 +282,7 @@ export default function App() {
 
   // Synchronizers and Server Synchronization
   const isInitialLoad = useRef(true);
-  const [useDirectFirestore, setUseDirectFirestore] = useState(false);
+  const [useDirectFirestore, setUseDirectFirestore] = useState(true);
   
   // Cache to track latest data received from Firestore/server to prevent write back loops
   const lastServerData = useRef<Record<string, string>>({});
@@ -283,165 +292,98 @@ export default function App() {
 
   // Helper to save specific state back to the shared database
   const saveToServer = (key: string, data: any) => {
-    if (useDirectFirestore) {
-      saveDoc(key, data)
-        .catch(err => console.error(`Direct Firestore write failed for ${key}:`, err));
-      return;
-    }
-
-    fetch('/api/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key, data })
-    })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`Server save returned status ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(resData => {
-        if (!resData.success) {
-          console.error(`Failed to save ${key} to server database`);
-        }
-      })
-      .catch(err => {
-        console.warn(`Error saving ${key} to server database, falling back to direct Firestore Client SDK:`, err);
-        setUseDirectFirestore(true);
-        saveDoc(key, data)
-          .catch(err2 => console.error(`Direct Firestore fallback write failed for ${key}:`, err2));
-      });
+    saveDoc(key, data)
+      .catch(err => console.error(`Direct Firestore write failed for ${key}:`, err));
   };
 
-  // 1. Initial Load of Database from Server or Direct Firestore
+  // 1. Database Seeding & Initialization on Startup (Direct Firestore Mode)
   useEffect(() => {
-    fetch('/api/db')
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`Server database returned status ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(data => {
-        if (data) {
-          Object.keys(data).forEach(key => {
-            lastServerData.current[key] = JSON.stringify(data[key]);
-            loadedKeys.current.add(key);
-          });
-          if (data.products) setProducts(data.products);
-          if (data.categories) setCategories(data.categories);
-          if (data.municipalities) setMunicipalities(data.municipalities);
-          if (data.users) setAllUsers(data.users);
-          if (data.reviews) setReviews(data.reviews);
-          if (data.siteSettings) {
-            setSiteSettings(data.siteSettings);
-            loadedKeys.current.add('settings');
-            loadedKeys.current.add('siteSettings');
-          }
-          if (data.packs) setPacks(data.packs);
-          if (data.orders) setRecentOrders(data.orders);
-          if (data.affiliates) {
-            setAffiliates(data.affiliates);
-            loadedKeys.current.add('affiliates');
-          } else {
-            loadedKeys.current.add('affiliates');
-          }
-          if (data.visitors && typeof data.visitors.count === 'number') {
-            setVisitorsCount(data.visitors.count);
-          }
-        }
-        setTimeout(() => {
-          isInitialLoad.current = false;
-        }, 300);
+    console.log("[Firestore] Running initial DB verification and collections seeding if empty...");
+    initializeCollectionsIfEmpty()
+      .then(() => {
+        console.log("[Firestore] Finished verifying/seeding default collection structures.");
       })
       .catch(err => {
-        console.warn('Backend API /api/db unavailable (expected on static hostings like Netlify). Switching to direct Firestore Client SDK mode. Error:', err);
-        setUseDirectFirestore(true);
+        console.error("[Firestore] Failed to verify/seed default database structures:", err);
       });
   }, []);
 
-  // 1.2. Actual Website Visitor Tracker (database backed, run once per browser session)
+  // 1.2. Direct Website Visitor Tracker (database backed, run once per browser session)
   useEffect(() => {
-    const sessionVisited = sessionStorage.getItem('store_session_visited');
+    const sessionVisited = sessionStorage.getItem('school_store_session_visited');
     if (!sessionVisited) {
-      sessionStorage.setItem('store_session_visited', 'true');
+      sessionStorage.setItem('school_store_session_visited', 'true');
       
-      // Attempt backend increment API first
-      fetch('/api/visit', { method: 'POST' })
-        .then(res => {
-          if (!res.ok) throw new Error();
-          return res.json();
+      console.log("[Firestore] Registering new visitor session, incrementing count...");
+      incrementVisitors()
+        .then(newCount => {
+          setVisitorsCount(newCount);
+          loadedKeys.current.add('visitors');
+          lastServerData.current['visitors'] = JSON.stringify({ count: newCount });
         })
-        .then(resData => {
-          if (resData && typeof resData.count === 'number') {
-            setVisitorsCount(resData.count);
-          }
-        })
-        .catch(() => {
-          // Fallback to direct Firestore Client SDK
-          getDocData('visitors')
-            .then(data => {
-              const currentCount = data && typeof data.count === 'number' ? data.count : 4850;
-              const nextCount = currentCount + 1;
-              saveDoc('visitors', { count: nextCount })
-                .then(() => {
-                  setVisitorsCount(nextCount);
-                })
-                .catch(err => console.error('Failed to increment visitors directly:', err));
-            })
-            .catch(err => console.error('Failed to get visitors directly:', err));
-        });
+        .catch(err => console.error('Failed to increment visitors directly:', err));
     }
   }, []);
 
-  // Real-time Firestore subscriptions for Netlify/serverless environments
+  // Real-time Firestore subscriptions for separate collection/document architecture
   useEffect(() => {
-    if (!useDirectFirestore) return;
-
-    console.log("Setting up real-time direct Firestore subscriptions...");
+    console.log("[Firestore] Setting up real-time direct collection and document subscriptions...");
     const unsubscribers: (() => void)[] = [];
 
-    const keys = [
-      { key: 'products', setter: setProducts },
-      { key: 'categories', setter: setCategories },
-      { key: 'municipalities', setter: setMunicipalities },
-      { key: 'users', setter: setAllUsers },
-      { key: 'reviews', setter: setReviews },
-      { key: 'settings', setter: setSiteSettings },
-      { key: 'packs', setter: setPacks },
-      { key: 'orders', setter: setRecentOrders },
-      { key: 'affiliates', setter: setAffiliates },
-      { key: 'visitors', setter: () => {} }
+    // Collections to subscribe to
+    const collectionsToSubscribe = [
+      { name: 'products', setter: setProducts },
+      { name: 'categories', setter: setCategories },
+      { name: 'municipalities', setter: setMunicipalities },
+      { name: 'users', setter: setAllUsers },
+      { name: 'reviews', setter: setReviews },
+      { name: 'packs', setter: setPacks },
+      { name: 'orders', setter: setRecentOrders },
+      { name: 'affiliates', setter: setAffiliates }
     ];
 
-    keys.forEach(({ key, setter }) => {
-      const unsub = subscribeDoc(key, (data) => {
-        if (key === 'orders') {
-          console.warn(`[SUBSCRIBE TRACE] Received data for key='orders':`, data);
-        }
-        // Mark key as loaded once subscription resolves (even if it's empty/null on a new DB)
-        loadedKeys.current.add(key);
+    collectionsToSubscribe.forEach(({ name, setter }) => {
+      const unsub = subscribeCollection(name, (data) => {
+        loadedKeys.current.add(name);
         if (data) {
-          lastServerData.current[key] = JSON.stringify(data);
-          if (key === 'visitors') {
-            if (typeof data.count === 'number') {
-              setVisitorsCount(data.count);
-            }
-          } else {
-            setter(data);
-          }
+          lastServerData.current[name] = JSON.stringify(data);
+          setter(data);
         }
       });
       unsubscribers.push(unsub);
     });
 
-    // Mark initial load complete once direct subscriptions are set up
-    isInitialLoad.current = false;
+    // Special single documents to subscribe to
+    const unsubSettings = subscribeDoc('settings', 'siteSettings', (data) => {
+      loadedKeys.current.add('settings');
+      loadedKeys.current.add('siteSettings');
+      if (data) {
+        lastServerData.current['settings'] = JSON.stringify(data);
+        lastServerData.current['siteSettings'] = JSON.stringify(data);
+        setSiteSettings(data);
+      }
+    });
+    unsubscribers.push(unsubSettings);
+
+    const unsubVisitors = subscribeDoc('visitors', 'stats', (data) => {
+      loadedKeys.current.add('visitors');
+      if (data && typeof data.count === 'number') {
+        lastServerData.current['visitors'] = JSON.stringify(data);
+        setVisitorsCount(data.count);
+      }
+    });
+    unsubscribers.push(unsubVisitors);
+
+    // Turn off loading gate after 500ms to allow subscriptions to seed local state
+    const loadingTimeout = setTimeout(() => {
+      isInitialLoad.current = false;
+    }, 1500);
 
     return () => {
+      clearTimeout(loadingTimeout);
       unsubscribers.forEach(unsub => unsub());
     };
-  }, [useDirectFirestore]);
+  }, []);
 
   // 1.5. URL and SEO-Friendly Router Synchronization
   const [isUrlRouterReady, setIsUrlRouterReady] = useState(false);
@@ -573,6 +515,7 @@ export default function App() {
     if (!isInitialLoad.current && loadedKeys.current.has('products')) {
       const stringified = JSON.stringify(products);
       if (lastServerData.current['products'] !== stringified) {
+        lastServerData.current['products'] = stringified;
         saveToServer('products', products);
       }
     }
@@ -583,6 +526,7 @@ export default function App() {
     if (!isInitialLoad.current && loadedKeys.current.has('categories')) {
       const stringified = JSON.stringify(categories);
       if (lastServerData.current['categories'] !== stringified) {
+        lastServerData.current['categories'] = stringified;
         saveToServer('categories', categories);
       }
     }
@@ -593,6 +537,7 @@ export default function App() {
     if (!isInitialLoad.current && loadedKeys.current.has('municipalities')) {
       const stringified = JSON.stringify(municipalities);
       if (lastServerData.current['municipalities'] !== stringified) {
+        lastServerData.current['municipalities'] = stringified;
         saveToServer('municipalities', municipalities);
       }
     }
@@ -607,6 +552,7 @@ export default function App() {
     if (!isInitialLoad.current && loadedKeys.current.has('users')) {
       const stringified = JSON.stringify(allUsers);
       if (lastServerData.current['users'] !== stringified) {
+        lastServerData.current['users'] = stringified;
         saveToServer('users', allUsers);
       }
     }
@@ -617,6 +563,7 @@ export default function App() {
     if (!isInitialLoad.current && loadedKeys.current.has('affiliates')) {
       const stringified = JSON.stringify(affiliates);
       if (lastServerData.current['affiliates'] !== stringified) {
+        lastServerData.current['affiliates'] = stringified;
         saveToServer('affiliates', affiliates);
       }
     }
@@ -627,6 +574,7 @@ export default function App() {
     if (!isInitialLoad.current && loadedKeys.current.has('reviews')) {
       const stringified = JSON.stringify(reviews);
       if (lastServerData.current['reviews'] !== stringified) {
+        lastServerData.current['reviews'] = stringified;
         saveToServer('reviews', reviews);
       }
     }
@@ -650,6 +598,7 @@ export default function App() {
     if (!isInitialLoad.current && loadedKeys.current.has('packs')) {
       const stringified = JSON.stringify(packs);
       if (lastServerData.current['packs'] !== stringified) {
+        lastServerData.current['packs'] = stringified;
         saveToServer('packs', packs);
       }
     }
@@ -720,6 +669,7 @@ export default function App() {
       const stringified = JSON.stringify(recentOrders);
       if (lastServerData.current['orders'] !== stringified) {
         console.warn(`[SYNC TRACE] MISMATCH DETECTED! lastServerData:`, lastServerData.current['orders'], `vs current state:`, stringified);
+        lastServerData.current['orders'] = stringified;
         saveToServer('orders', recentOrders);
       }
     }
@@ -794,91 +744,15 @@ export default function App() {
 
     console.log("[Order Success TRACE] orderWithUser structure is:", JSON.stringify(orderWithUser, null, 2));
 
-    if (useDirectFirestore) {
-      try {
-        console.log("[Firestore Order Save] Fetching freshet orders from Firestore...");
-        // Fetch the absolute freshest orders from Firestore to prevent overwriting other recent orders
-        const latestOrdersFromDb = await getDocData('orders');
-        console.log("[Firestore Order Save] Retrieved latest orders from DB:", latestOrdersFromDb);
-        const currentOrdersList: Order[] = Array.isArray(latestOrdersFromDb)
-          ? latestOrdersFromDb
-          : (recentOrders || []);
-
-        const updatedOrders = [orderWithUser, ...currentOrdersList];
-
-        // Update local state and lastServerData cache to prevent write-back loop in useEffect
-        lastServerData.current['orders'] = JSON.stringify(updatedOrders);
-        setRecentOrders(updatedOrders);
-
-        console.log("[Firestore Order Save] Attempting to save updated orders list to Firestore document store_data/orders:", updatedOrders);
-        // Save directly to Firestore under 'store_data/orders'
-        await saveDoc('orders', updatedOrders);
-        console.log("[Firestore Order Save] Document successfully saved to Firestore!");
-      } catch (err) {
-        console.error("[Firestore Order Save] CRITICAL EXCEPTION CAUGHT during direct Firestore write:", err);
-        if (err instanceof Error) {
-          console.error("Error Message:", err.message);
-          console.error("Error Stack:", err.stack);
-        }
-        const updatedOrders = [orderWithUser, ...recentOrders];
-        setRecentOrders(updatedOrders);
-      }
+    try {
+      console.log("[Firestore Order Save] Saving new order directly to Firestore collection 'orders' with id:", orderWithUser.id);
+      await saveDocument('orders', orderWithUser.id, orderWithUser);
+      console.log("[Firestore Order Save] Order successfully saved to Firestore!");
       showToast(`تم تسجيل طلبيتك برقم ${newOrder.id} بنجاح!`, 'success');
-      return;
+    } catch (err) {
+      console.error("[Firestore Order Save] CRITICAL EXCEPTION CAUGHT during direct Firestore write:", err);
+      showToast(`عذرًا، حدث خطأ أثناء تسجيل طلبك. يرجى المحاولة مرة أخرى.`, 'info');
     }
-
-    // Save order securely on the server
-    fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(orderWithUser)
-    })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`Order save returned status ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(data => {
-        if (data && data.allOrders) {
-          lastServerData.current['orders'] = JSON.stringify(data.allOrders);
-          setRecentOrders(data.allOrders);
-        } else {
-          const updated = [orderWithUser, ...recentOrders];
-          lastServerData.current['orders'] = JSON.stringify(updated);
-          setRecentOrders(updated);
-        }
-      })
-      .catch(async (err) => {
-        console.warn('Failed to save order to server database, falling back to direct Firestore. Error:', err);
-        setUseDirectFirestore(true);
-        try {
-          console.log("[Firestore Fallback Order Save] Fetching freshest orders from Firestore...");
-          const latestOrdersFromDb = await getDocData('orders');
-          console.log("[Firestore Fallback Order Save] Retrieved latest orders from DB:", latestOrdersFromDb);
-          const currentOrdersList: Order[] = Array.isArray(latestOrdersFromDb)
-            ? latestOrdersFromDb
-            : (recentOrders || []);
-
-          const updatedOrders = [orderWithUser, ...currentOrdersList];
-          lastServerData.current['orders'] = JSON.stringify(updatedOrders);
-          setRecentOrders(updatedOrders);
-          
-          console.log("[Firestore Fallback Order Save] Attempting to save updated orders list to Firestore document store_data/orders:", updatedOrders);
-          await saveDoc('orders', updatedOrders);
-          console.log("[Firestore Fallback Order Save] Document successfully saved to Firestore!");
-        } catch (e) {
-          console.error("[Firestore Fallback Order Save] CRITICAL EXCEPTION CAUGHT during direct Firestore fallback write:", e);
-          if (e instanceof Error) {
-            console.error("Fallback Error Message:", e.message);
-            console.error("Fallback Error Stack:", e.stack);
-          }
-          const updatedOrders = [orderWithUser, ...recentOrders];
-          setRecentOrders(updatedOrders);
-        }
-      });
-
-    showToast(`تم تسجيل طلبيتك برقم ${newOrder.id} بنجاح!`, 'success');
   };
 
 
@@ -1667,6 +1541,8 @@ export default function App() {
               <span>•</span>
               <button onClick={() => { setCurrentView('faq'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:underline hover:text-white cursor-pointer">الأسئلة الشائعة</button>
               <span>•</span>
+              <button onClick={() => setIsAffiliatePortalOpen(true)} className="hover:underline hover:text-emerald-400 text-emerald-500 font-extrabold cursor-pointer">بوابة المسوقين بالعمولة 💰</button>
+              <span>•</span>
               <button 
                 onClick={() => {
                   setAuthInitialMode('login');
@@ -1731,6 +1607,15 @@ export default function App() {
         product={quickViewProduct}
         onDirectPurchase={handleDirectPurchase}
         onAddToCart={handleAddToCart}
+      />
+
+      {/* Affiliate Earnings & Portal Modal */}
+      <AffiliatePortalModal
+        isOpen={isAffiliatePortalOpen}
+        onClose={() => setIsAffiliatePortalOpen(false)}
+        affiliates={affiliates}
+        orders={recentOrders}
+        formatPrice={formatPrice}
       />
 
       {/* Clear Cart Confirmation Modal */}

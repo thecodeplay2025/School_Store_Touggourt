@@ -80,6 +80,10 @@ export default function CheckoutModal({
     // Simulate database insertion & loading
     setTimeout(() => {
       const storedRef = localStorage.getItem('school_store_referral_code') || undefined;
+      console.log(`%c[REFERRAL TRACE - CHECKOUT] Initiating Order Creation...`, "color: #3b82f6; font-weight: bold;");
+      console.log(`[REFERRAL TRACE - CHECKOUT] Stored referral code in localStorage: "${storedRef || 'None'}"`);
+      console.log(`[REFERRAL TRACE - CHECKOUT] Cookie school_store_ref value: "${document.cookie.split('; ').find(row => row.startsWith('school_store_ref='))?.split('=')[1] || 'None'}"`);
+      
       const generatedOrder: Order = {
         id: 'STS-' + Math.floor(100000 + Math.random() * 900000),
         customerName: name,
@@ -92,6 +96,9 @@ export default function CheckoutModal({
         date: new Date().toLocaleDateString('ar-DZ', { year: 'numeric', month: 'long', day: 'numeric' }),
         referrer: storedRef
       };
+
+      console.log(`%c[REFERRAL TRACE - CHECKOUT] Created Order payload with referrer: "${generatedOrder.referrer || 'None'}"`, "color: #10b981; font-weight: bold;");
+      console.log("[REFERRAL TRACE - PAYLOAD]", JSON.stringify(generatedOrder, null, 2));
 
       setIsSubmitting(false);
       setSuccessOrder(generatedOrder);
