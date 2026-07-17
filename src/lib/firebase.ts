@@ -111,7 +111,7 @@ export async function initializeCollectionsIfEmpty() {
     const visitorsDoc = await getDoc(doc(db, "visitors", "stats"));
     if (!visitorsDoc.exists()) {
       console.log("[Firestore Seeder] Seeding default visitors stats...");
-      await setDoc(doc(db, "visitors", "stats"), { count: 4850 });
+      await setDoc(doc(db, "visitors", "stats"), { count: 0 });
     }
 
     console.log("[Firestore Seeder] Database is synchronized and fully seeded!");
@@ -320,13 +320,13 @@ export async function incrementVisitors() {
   try {
     const docRef = doc(db, "visitors", "stats");
     const snap = await getDoc(docRef);
-    const count = snap.exists() ? (snap.data().count || 4850) : 4850;
+    const count = snap.exists() ? (snap.data().count || 0) : 0;
     const nextCount = count + 1;
     await setDoc(docRef, { count: nextCount }, { merge: true });
     return nextCount;
   } catch (err) {
     console.error("Error in incrementVisitors:", err);
-    return 4851;
+    return 1;
   }
 }
 
@@ -347,7 +347,7 @@ export async function getDocData(key: string) {
   if (key === 'visitors') {
     const docRef = doc(db, "visitors", "stats");
     const snap = await getDoc(docRef);
-    return snap.exists() ? snap.data() : { count: 4850 };
+    return snap.exists() ? snap.data() : { count: 0 };
   }
   if (key === 'settings' || key === 'siteSettings') {
     const docRef = doc(db, "settings", "siteSettings");

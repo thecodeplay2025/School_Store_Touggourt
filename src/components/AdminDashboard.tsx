@@ -197,6 +197,7 @@ export default function AdminDashboard({
   const [muniName, setMuniName] = useState('');
   const [muniFee, setMuniFee] = useState(150);
   const [muniTime, setMuniTime] = useState('خلال 24 ساعة');
+  const [muniAvailable, setMuniAvailable] = useState(true);
 
   // --- OFFER FORM STATES ---
   const [offerDiscount, setOfferDiscount] = useState(0); // 0-100%
@@ -476,7 +477,11 @@ export default function AdminDashboard({
           
           return itemSum + (sellPrice - purchasePrice) * item.quantity;
         }, 0);
-        return sum + orderProfit;
+        
+        // Deduct the affiliate commission from the net collected profit if commission has been calculated
+        const commissionPaid = o.commissionCalculated && o.commissionAmount ? o.commissionAmount : 0;
+        
+        return sum + (orderProfit - commissionPaid);
       }, 0);
   }, [orders, products, packs]);
 
@@ -687,8 +692,27 @@ export default function AdminDashboard({
       const rate = affiliateObj && (affiliateObj.commissionRate !== undefined && affiliateObj.commissionRate !== null)
         ? affiliateObj.commissionRate
         : (siteSettings.referralCommissionRate || 10);
-      commission = Math.round(originalOrder.total * (rate / 100));
-      console.log(`[REFERRAL TRACE - STATUS UPDATE] Calculated commission for code "${code}": ${commission} DA (Rate used: ${rate}%)`);
+      
+      // Calculate order profit
+      const orderProfit = originalOrder.items.reduce((itemSum, item) => {
+        const sellPrice = item.product.price;
+        const activeProd = products.find(p => p.id === item.product.id) || packs.find(p => p.id === item.product.id);
+        const purchasePrice = activeProd?.purchasePrice !== undefined
+          ? activeProd.purchasePrice
+          : item.product.purchasePrice !== undefined
+            ? item.product.purchasePrice
+            : Math.round(sellPrice * 0.8);
+        
+        return itemSum + (sellPrice - purchasePrice) * item.quantity;
+      }, 0);
+
+      const cleanProfit = Math.max(0, orderProfit);
+      commission = Math.round(cleanProfit * (rate / 100));
+      console.log(`[REFERRAL TRACE - STATUS UPDATE] Profit-based commission calculation:`);
+      console.log(`   - Order Gross Profit: ${orderProfit} DA`);
+      console.log(`   - Cleaned Profit (min 0): ${cleanProfit} DA`);
+      console.log(`   - Affiliate Commission Rate: ${rate}%`);
+      console.log(`   - Calculated Commission (Profit * Rate): ${commission} DA`);
     } else {
       console.log(`[REFERRAL TRACE - STATUS UPDATE] No commission calculation triggers met for this status update.`);
     }
@@ -988,11 +1012,12 @@ export default function AdminDashboard({
       const updated = municipalities.map(m => m.name === editingMuni.name ? {
         ...m,
         shippingFee: muniFee,
-        deliveryTime: muniTime
+        deliveryTime: muniTime,
+        available: muniAvailable
       } : m);
       onUpdateMunicipalities(updated);
       setEditingMuni(null);
-      triggerNoti('تم حفظ رسوم الشحن ومدة التوصيل المحدثة');
+      triggerNoti('تم حفظ رسوم الشحن وحالة التوفر المحدثة للبلدية بنجاح');
     }
   };
 
@@ -1329,16 +1354,16 @@ export default function AdminDashboard({
                 <div className="h-72 w-full pr-4" dir="ltr">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={salesOverTime} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis 
                         dataKey="dateLabel" 
-                        stroke="#94a3b8" 
+                        stroke="#64748b" 
                         fontSize={10}
                         fontWeight="bold"
                         tickLine={false}
                       />
                       <YAxis 
-                        stroke="#94a3b8" 
+                        stroke="#64748b" 
                         fontSize={10}
                         fontWeight="bold"
                         tickLine={false}
@@ -1346,15 +1371,16 @@ export default function AdminDashboard({
                       />
                       <Tooltip 
                         contentStyle={{ 
-                          backgroundColor: '#020617', 
-                          borderColor: '#1e293b', 
+                          backgroundColor: '#ffffff', 
+                          borderColor: '#cbd5e1', 
                           borderRadius: '12px',
                           textAlign: 'right',
                           direction: 'rtl',
                           fontSize: '11px',
-                          fontWeight: 'bold'
+                          fontWeight: 'bold',
+                          color: '#0f172a'
                         }}
-                        labelStyle={{ color: '#ffffff', fontWeight: '900', marginBottom: '4px' }}
+                        labelStyle={{ color: '#0f172a', fontWeight: '900', marginBottom: '4px' }}
                       />
                       <Line 
                         type="monotone" 
@@ -2074,7 +2100,7 @@ export default function AdminDashboard({
                   <table className="w-full text-right">
                     <thead className="bg-slate-900 text-slate-400 font-bold border-b border-slate-800">
                       <tr>
-                        <th className="p-4">كود الطلبية</th>
+                        <th className="p-4">#</th>
                         <th className="p-4">الزبون والهاتف</th>
                         <th className="p-4">البلدية والعنوان</th>
                         <th className="p-4">الإجمالي</th>
@@ -2084,13 +2110,13 @@ export default function AdminDashboard({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
-                      {filteredOrdersList.map((order) => (
+                      {filteredOrdersList.map((order, index) => (
                         <tr 
                           key={order.id} 
                           className="hover:bg-slate-900/50 transition-colors cursor-pointer"
                           onClick={() => setSelectedOrder(order)}
                         >
-                          <td className="p-4 font-mono font-black text-brand-blue">{order.id}</td>
+                          <td className="p-4 font-mono font-black text-brand-blue">{index + 1}</td>
                           <td className="p-4">
                             <p className="font-extrabold text-white">{order.customerName}</p>
                             <p className="text-[10px] text-slate-400 font-mono mt-0.5">{order.phone}</p>
@@ -2160,24 +2186,13 @@ export default function AdminDashboard({
             <div className="space-y-6 text-right">
               <div>
                 <h3 className="text-base sm:text-lg font-black text-white">إدارة البلديات ورسوم التوصيل</h3>
-                <p className="text-xs text-slate-400 mt-1 font-bold">تعديل تكلفة الشحن ومدة التوصيل لبلديات ولاية توقرت الـ 11</p>
+                <p className="text-xs text-slate-400 mt-1 font-bold">تعديل مدة التوصيل والتوفر لبلديات ولاية توقرت الـ 11</p>
               </div>
 
               {editingMuni && (
                 <form onSubmit={handleMuniSave} className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 animate-in slide-in-from-top duration-300">
-                  <h4 className="text-sm font-black text-white">تعديل رسوم: {editingMuni.name}</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-400">تكلفة التوصيل (د.ج)</label>
-                      <input
-                        type="number"
-                        required
-                        value={muniFee}
-                        onChange={(e) => setMuniFee(Number(e.target.value))}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-semibold focus:outline-none focus:border-brand-blue text-right text-white"
-                      />
-                    </div>
-
+                  <h4 className="text-sm font-black text-white">تعديل مدة وتوفر الشحن: {editingMuni.name}</h4>
+                  <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-slate-400">مدة التوصيل التقريبية</label>
                       <input
@@ -2190,12 +2205,25 @@ export default function AdminDashboard({
                     </div>
                   </div>
 
+                  <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl p-3.5 mt-2">
+                    <input
+                      type="checkbox"
+                      id="muni-available"
+                      checked={muniAvailable}
+                      onChange={(e) => setMuniAvailable(e.target.checked)}
+                      className="w-4 h-4 text-brand-blue bg-slate-950 border-slate-800 rounded focus:ring-brand-blue cursor-pointer"
+                    />
+                    <label htmlFor="muni-available" className="text-xs font-bold text-slate-300 cursor-pointer select-none">
+                      الشحن متوفر لهذه الولاية / البلدية حالياً
+                    </label>
+                  </div>
+
                   <div className="flex gap-2.5 pt-3">
                     <button
                       type="submit"
                       className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl text-xs font-black transition-all"
                     >
-                      <span>تحديث الرسوم</span>
+                      <span>تحديث إعدادات الشحن</span>
                     </button>
                     <button
                       type="button"
@@ -2213,17 +2241,32 @@ export default function AdminDashboard({
                   <thead className="bg-slate-900 text-slate-400 font-bold border-b border-slate-800">
                     <tr>
                       <th className="p-4">اسم البلدية بتوقرت</th>
-                      <th className="p-4">سعر التوصيل للمنزل</th>
                       <th className="p-4">مدة التوصيل المتوقعة</th>
+                      <th className="p-4 text-center">حالة الشحن</th>
                       <th className="p-4 text-center">تحديث</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
                     {municipalities.map((m) => (
-                      <tr key={m.name} className="hover:bg-slate-900/50 transition-colors">
-                        <td className="p-4 font-bold text-white">{m.name}</td>
-                        <td className="p-4 font-black text-brand-blue">{formatPrice(m.shippingFee)}</td>
+                      <tr key={m.name} className={`hover:bg-slate-900/50 transition-colors ${m.available === false ? 'opacity-70 bg-slate-950/20' : ''}`}>
+                        <td className="p-4 font-bold text-white">
+                          {m.name}
+                          {m.available === false && <span className="text-[10px] text-rose-400 font-black mr-2 font-mono">(موقف مؤقتاً)</span>}
+                        </td>
                         <td className="p-4 text-slate-300">{m.deliveryTime}</td>
+                        <td className="p-4 text-center">
+                          {m.available !== false ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                              متوفر
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                              غير متوفر للشحن
+                            </span>
+                          )}
+                        </td>
                         <td className="p-4 text-center">
                           <button
                             type="button"
@@ -2232,10 +2275,11 @@ export default function AdminDashboard({
                               setMuniName(m.name);
                               setMuniFee(m.shippingFee);
                               setMuniTime(m.deliveryTime);
+                              setMuniAvailable(m.available !== false);
                             }}
                             className="bg-slate-900 hover:bg-brand-blue text-slate-200 hover:text-white px-3 py-1.5 rounded-lg border border-slate-800 transition-colors"
                           >
-                            تعديل الرسوم
+                            تعديل الرسوم والتوفر
                           </button>
                         </td>
                       </tr>

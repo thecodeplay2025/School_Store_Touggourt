@@ -12,6 +12,7 @@ interface CheckoutModalProps {
   onOrderSuccess: (order: Order) => void;
   onClearCart: () => void;
   isDirect?: boolean;
+  municipalities?: Municipality[];
 }
 
 export default function CheckoutModal({
@@ -20,12 +21,15 @@ export default function CheckoutModal({
   cart,
   onOrderSuccess,
   onClearCart,
-  isDirect = false
+  isDirect = false,
+  municipalities = MUNICIPALITIES
 }: CheckoutModalProps) {
   
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [selectedMuni, setSelectedMuni] = useState<Municipality>(MUNICIPALITIES[0]);
+  const [selectedMuni, setSelectedMuni] = useState<Municipality>(
+    MUNICIPALITIES.find(m => m.available !== false) || MUNICIPALITIES[0]
+  );
   const [address, setAddress] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successOrder, setSuccessOrder] = useState<Order | null>(null);
@@ -36,7 +40,9 @@ export default function CheckoutModal({
       // Reset form and success states on open
       setName('');
       setPhone('');
-      setSelectedMuni(MUNICIPALITIES[0]);
+      setSelectedMuni(
+        municipalities.find(m => m.available !== false) || municipalities[0] || MUNICIPALITIES[0]
+      );
       setAddress('');
       setIsSubmitting(false);
       setSuccessOrder(null);
@@ -46,18 +52,18 @@ export default function CheckoutModal({
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isOpen]);
+  }, [isOpen, municipalities]);
 
   const formatPrice = (price: number) => {
     return price.toLocaleString('ar-DZ') + ' د.ج';
   };
 
   const subtotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-  const freeShippingThreshold = 6000;
+  const freeShippingThreshold = 0; // Free shipping for everyone
   
-  // Dynamic shipping fee based on total & selected municipality
-  const shippingFee = subtotal >= freeShippingThreshold ? 0 : selectedMuni.shippingFee;
-  const total = subtotal + shippingFee;
+  // Dynamic shipping fee based on total & selected municipality - Set to 0 always as requested (Free delivery for all states)
+  const shippingFee = 0;
+  const total = subtotal;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,8 +76,8 @@ export default function CheckoutModal({
       alert('يرجى إدخال رقم هاتف صحيح (مثال: 06XXXXXXXX أو 07XXXXXXXX).');
       return;
     }
-    if (!address.trim()) {
-      alert('يرجى إدخال عنوان الإقامة لتسهيل عملية التوصيل.');
+    if (selectedMuni.available === false) {
+      alert('عذراً، الشحن متوقف مؤقتاً لهذه المنطقة. يرجى اختيار منطقة أخرى أو الاتصال بنا.');
       return;
     }
 
@@ -274,28 +280,40 @@ export default function CheckoutModal({
                           <select
                             value={selectedMuni.name}
                             onChange={(e) => {
-                              const found = MUNICIPALITIES.find(m => m.name === e.target.value);
+                              const found = municipalities.find(m => m.name === e.target.value);
                               if (found) setSelectedMuni(found);
                             }}
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all appearance-none cursor-pointer text-right"
                             id="municipality-select"
                           >
-                            {MUNICIPALITIES.map((muni) => (
-                              <option key={muni.name} value={muni.name}>
-                                {muni.name} (التوصيل: {subtotal >= freeShippingThreshold ? 'مجاني' : muni.shippingFee + ' د.ج'})
-                              </option>
-                            ))}
+                            {municipalities.map((muni) => {
+                              const isAvail = muni.available !== false;
+                              return (
+                                <option 
+                                  key={muni.name} 
+                                  value={muni.name}
+                                  disabled={!isAvail}
+                                  className={!isAvail ? "text-slate-400 font-bold bg-slate-100" : "text-slate-900 font-bold"}
+                                >
+                                  {muni.name} {isAvail ? '(توصيل مجاني 🎁)' : ' - (الشحن غير متوفر حالياً 🚫)'}
+                                </option>
+                              );
+                            })}
                           </select>
                           <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         </div>
+                        {selectedMuni.available === false && (
+                          <p className="text-xs text-rose-600 mt-1.5 font-bold animate-pulse">
+                            ⚠️ عذراً، الشحن متوقف حالياً لولاية/بلدية {selectedMuni.name}. يرجى اختيار منطقة أخرى.
+                          </p>
+                        )}
                       </div>
 
                       {/* Precise Address */}
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-2">العنوان الكامل ومكان الإقامة الدقيق *</label>
+                        <label className="block text-xs font-bold text-slate-700 mb-2">العنوان الكامل ومكان الإقامة الدقيق (اختياري)</label>
                         <div className="relative">
                           <textarea
-                            required
                             placeholder="اسم الحي، رقم الشارع، بالقرب من (مسجد أو مدرسة شهيرة لتسهيل التوصيل)..."
                             value={address}
                             onChange={(e) => setAddress(e.target.value)}

@@ -73,7 +73,7 @@ export default function Header({
       {showPromo && (
         <div className="bg-brand-blue text-white py-1.5 px-4 text-xs font-medium text-center flex items-center justify-center gap-2 relative">
           <Sparkles className="h-3.5 w-3.5 animate-pulse text-brand-yellow" />
-          <span>توصيل مجاني في كافة بلديات توقرت للطلبات الأكثر من 4000 د.ج 🚚</span>
+          <span>توصيل مجاني بالكامل لكافة بلديات ولاية توقرت 🚚🎁</span>
           <button 
             onClick={() => {
               setShowPromo(false);

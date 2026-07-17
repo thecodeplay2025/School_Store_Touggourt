@@ -41,6 +41,7 @@ export interface Municipality {
   name: string;
   shippingFee: number;
   deliveryTime: string;
+  available?: boolean;
 }
 
 export interface Order {

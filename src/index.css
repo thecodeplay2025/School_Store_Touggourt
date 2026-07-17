@@ -34,3 +34,242 @@ body {
   background: #94a3b8;
 }
 
+
+/* ==========================================================================
+   Admin Dashboard White Mode Overrides
+   ========================================================================== */
+
+#admin-main-view {
+  background-color: #f8fafc !important; /* light slate background */
+  color: #334155 !important; /* slate-700 */
+}
+
+/* Base text elements color overrides */
+#admin-main-view text {
+  fill: #475569 !important; /* SVG charts text */
+}
+
+/* Header bar styling */
+#admin-main-view header {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+#admin-main-view header h1, 
+#admin-main-view header .text-white {
+  color: #0f172a !important; /* slate-900 */
+}
+
+#admin-main-view header p,
+#admin-main-view header .text-slate-400 {
+  color: #64748b !important; /* slate-500 */
+}
+
+/* Sidebar Panel */
+#admin-main-view aside {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+#admin-main-view aside button {
+  color: #475569 !important; /* slate-600 */
+}
+
+#admin-main-view aside button:not(.bg-brand-blue):hover {
+  background-color: #f1f5f9 !important; /* slate-100 */
+  color: #0f172a !important; /* slate-900 */
+}
+
+#admin-main-view aside button.bg-brand-blue {
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+#admin-main-view aside span.bg-slate-800 {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+}
+
+/* Content Container */
+#admin-main-view main {
+  background-color: #f8fafc !important;
+}
+
+/* Bento Cards and general box panels */
+#admin-main-view .bg-slate-950,
+#admin-main-view .bg-slate-900,
+#admin-main-view .bg-slate-900\/50,
+#admin-main-view .bg-slate-950\/20,
+#admin-main-view .bg-slate-900\/40,
+#admin-main-view .bg-slate-950\/80 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+}
+
+#admin-main-view h2,
+#admin-main-view h3,
+#admin-main-view h4,
+#admin-main-view .text-white,
+#admin-main-view .text-slate-100 {
+  color: #0f172a !important; /* slate-900 */
+}
+
+#admin-main-view .text-slate-200 {
+  color: #1e293b !important; /* slate-800 */
+}
+
+#admin-main-view .text-slate-300 {
+  color: #334155 !important; /* slate-700 */
+}
+
+#admin-main-view .text-slate-400 {
+  color: #475569 !important; /* slate-600 */
+}
+
+#admin-main-view .text-slate-500 {
+  color: #64748b !important; /* slate-500 */
+}
+
+/* Stat color adjustments for higher contrast on light mode */
+#admin-main-view .text-emerald-400 {
+  color: #166534 !important; /* emerald-800 */
+}
+#admin-main-view .text-teal-400 {
+  color: #0f766e !important; /* teal-700 */
+}
+#admin-main-view .text-purple-400 {
+  color: #6b21a8 !important; /* purple-800 */
+}
+#admin-main-view .text-brand-blue {
+  color: #1d4ed8 !important; /* blue-700 */
+}
+#admin-main-view .text-amber-400 {
+  color: #b45309 !important; /* amber-700 */
+}
+
+/* Borders and Separators */
+#admin-main-view .border-slate-800,
+#admin-main-view .border-slate-800\/60,
+#admin-main-view .divide-slate-800,
+#admin-main-view .border-slate-700 {
+  border-color: #e2e8f0 !important;
+}
+
+#admin-main-view .divide-y > * + * {
+  border-color: #e2e8f0 !important;
+}
+
+/* Inputs, Selects, and Textareas */
+#admin-main-view input,
+#admin-main-view select,
+#admin-main-view textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+#admin-main-view input:focus,
+#admin-main-view select:focus,
+#admin-main-view textarea:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1) !important;
+}
+
+#admin-main-view input::placeholder,
+#admin-main-view textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Dropdown selections */
+#admin-main-view select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* Data Tables */
+#admin-main-view table {
+  background-color: #ffffff !important;
+}
+
+#admin-main-view table thead {
+  background-color: #f8fafc !important;
+}
+
+#admin-main-view table thead th {
+  color: #334155 !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+
+#admin-main-view table tbody tr {
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+#admin-main-view table tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+#admin-main-view table td {
+  color: #334155 !important;
+}
+
+#admin-main-view table td .text-white {
+  color: #0f172a !important;
+}
+
+/* Status block indicators */
+#admin-main-view .bg-amber-500\/5 {
+  background-color: #fffbeb !important; /* amber-50 */
+  border-color: #fef3c7 !important;
+}
+#admin-main-view .bg-blue-500\/5 {
+  background-color: #eff6ff !important; /* blue-50 */
+  border-color: #dbeafe !important;
+}
+#admin-main-view .bg-purple-500\/5 {
+  background-color: #faf5ff !important; /* purple-50 */
+  border-color: #f3e8ff !important;
+}
+#admin-main-view .bg-emerald-500\/5 {
+  background-color: #f0fdf4 !important; /* emerald-50 */
+  border-color: #dcfce7 !important;
+}
+
+/* Sub-buttons and action rails */
+#admin-main-view button.bg-slate-800 {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+#admin-main-view button.bg-slate-800:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Interactive labels and helpers */
+#admin-main-view label.text-slate-400 {
+  color: #334155 !important;
+}
+
+/* Modal layers (e.g. Details and confirms) */
+#admin-main-view .fixed.inset-0.bg-slate-950\/80 {
+  background-color: rgba(15, 23, 42, 0.4) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+#admin-main-view .fixed.inset-0.bg-slate-950\/80 > div {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* Modal containers themselves */
+#admin-main-view .bg-slate-950.border.border-slate-800.rounded-3xl.p-6,
+#admin-main-view .bg-slate-900.border.border-slate-800.rounded-3xl.p-6 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+

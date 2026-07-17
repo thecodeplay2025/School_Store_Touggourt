@@ -113,8 +113,8 @@ export default function App() {
       contactPhone1: '0661000000',
       contactPhone2: '0771000000',
       warehouseAddress: 'حي المستقبل، وسط مدينة توقرت، الجزائر',
-      freeShippingThreshold: 6000,
-      promoBannerText: 'توصيل مجاني في كافة بلديات توقرت للطلبات الأكثر من 6000 د.ج!'
+      freeShippingThreshold: 0,
+      promoBannerText: 'توصيل مجاني بالكامل لكافة بلديات ولاية توقرت 🚚🎁'
     };
   });
 
@@ -278,7 +278,7 @@ export default function App() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
 
   // Visitors State (backed by server or direct Firestore Client SDK)
-  const [visitorsCount, setVisitorsCount] = useState<number>(4850);
+  const [visitorsCount, setVisitorsCount] = useState<number>(0);
 
   // Synchronizers and Server Synchronization
   const isInitialLoad = useRef(true);
@@ -877,7 +877,7 @@ export default function App() {
     },
     {
       q: 'كم تبلغ تكلفة التوصيل؟ وهل هناك توصيل مجاني؟',
-      a: 'تكلفة التوصيل رمزية جداً وتتراوح بين 150 د.ج لبلديات وسط توقرت ونزلة وتبسبست، و350 د.ج للبلديات البعيدة كالهجيرة والعالية. ونقدم ميزة التوصيل المجاني بالكامل لأي طلبية تزيد قيمتها عن 6000 د.ج!'
+      a: 'التوصيل مجاني بالكامل 100% لكافة بلديات ولاية توقرت الـ 11 بدون أي تكاليف إضافية ومهما كانت قيمة طلبيتك!'
     },
     {
       q: 'هل الأدوات والآلات الحاسبة أصلية وتوافق متطلبات المدارس والأساتذة؟',
@@ -1541,8 +1541,6 @@ export default function App() {
               <span>•</span>
               <button onClick={() => { setCurrentView('faq'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:underline hover:text-white cursor-pointer">الأسئلة الشائعة</button>
               <span>•</span>
-              <button onClick={() => setIsAffiliatePortalOpen(true)} className="hover:underline hover:text-emerald-400 text-emerald-500 font-extrabold cursor-pointer">بوابة المسوقين بالعمولة 💰</button>
-              <span>•</span>
               <button 
                 onClick={() => {
                   setAuthInitialMode('login');
@@ -1595,6 +1593,7 @@ export default function App() {
         onOrderSuccess={handleOrderSuccess}
         onClearCart={directPurchaseItem ? () => setDirectPurchaseItem(null) : handleClearCart}
         isDirect={!!directPurchaseItem}
+        municipalities={municipalities}
       />
 
       {/* Product Quick View Modal */}

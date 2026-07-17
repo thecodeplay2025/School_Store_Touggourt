@@ -128,29 +128,7 @@ export default function CartDrawer({
             {/* Cart Items Area */}
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
               
-              {/* Free Shipping Progress Meter */}
-              {cart.length > 0 && (
-                <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
-                  <div className="flex items-center gap-2 mb-2 text-xs font-bold text-slate-700">
-                    <Truck className="h-4 w-4 text-brand-blue" />
-                    {subtotal >= freeShippingThreshold ? (
-                      <span className="text-emerald-600">تهانينا! لقد حصلت على توصيل مجاني 🎉</span>
-                    ) : (
-                      <span>تفصلك <span className="text-brand-blue">{formatPrice(leftForFreeShipping)}</span> عن التوصيل المجاني!</span>
-                    )}
-                  </div>
-                  
-                  {/* Progress Bar Container */}
-                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-500 rounded-full ${
-                        subtotal >= freeShippingThreshold ? 'bg-emerald-500' : 'bg-brand-blue'
-                      }`}
-                      style={{ width: `${progressPercent}%` }}
-                    ></div>
-                  </div>
-                </div>
-              )}
+
 
               {cart.length === 0 ? (
                 /* Empty Cart State */
@@ -259,10 +237,8 @@ export default function CartDrawer({
                     <span className="font-extrabold text-slate-800">{formatPrice(subtotal)}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-400">التوصيل (تقديري):</span>
-                    <span className="font-bold text-emerald-600">
-                      {subtotal >= freeShippingThreshold ? 'مجاني' : 'يحدد عند الدفع'}
-                    </span>
+                    <span className="font-bold text-slate-400">التوصيل:</span>
+                    <span className="font-bold text-emerald-600">مجاني 🎁</span>
                   </div>
                   <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between">
                     <span className="font-extrabold text-slate-900 text-base">الإجمالي:</span>
