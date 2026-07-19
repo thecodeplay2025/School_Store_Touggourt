@@ -34,7 +34,9 @@ import {
   BookOpen,
   PenTool,
   Palette,
-  Cpu
+  Cpu,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Product, Category, Municipality, Order, User, Review, SiteSettings, Affiliate } from '../types';
 import { convertGoogleDriveUrl, getCompatibleImageUrl } from '../utils/imageHelper';
@@ -220,6 +222,74 @@ export default function AdminDashboard({
   const [affiliateCode, setAffiliateCode] = useState('');
   const [affiliateCommissionRate, setAffiliateCommissionRate] = useState<string>('');
   const [affiliatesSearch, setAffiliatesSearch] = useState('');
+  const [expandedAffiliateId, setExpandedAffiliateId] = useState<string | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  const handleDownloadPdfDirectly = async () => {
+    setIsDownloadingPdf(true);
+    try {
+      const html2pdf = await new Promise<any>((resolve, reject) => {
+        if ((window as any).html2pdf) {
+          resolve((window as any).html2pdf);
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+        script.onload = () => resolve((window as any).html2pdf);
+        script.onerror = (err) => reject(err);
+        document.body.appendChild(script);
+      });
+
+      const element = document.getElementById('print-report-container');
+      if (!element) {
+        alert('حدث خطأ: لم يتم العثور على محتوى التقرير المعني بالتصدير.');
+        setIsDownloadingPdf(false);
+        return;
+      }
+
+      // Temporarily show the element off-screen so html2canvas can capture it properly
+      const originalClassName = element.className;
+      const originalStylePosition = element.style.position;
+      const originalStyleLeft = element.style.left;
+      const originalStyleTop = element.style.top;
+      const originalStyleWidth = element.style.width;
+
+      element.className = "bg-white text-slate-900 p-8 text-right text-xs space-y-6 leading-relaxed block";
+      element.style.position = "absolute";
+      element.style.left = "-9999px";
+      element.style.top = "0";
+      element.style.width = "850px";
+
+      const opt = {
+        margin:       [12, 12, 12, 12],
+        filename:     `تقرير_نشاط_متجر_توقرت_${new Date().toISOString().slice(0, 10)}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { 
+          scale: 2, 
+          useCORS: true, 
+          letterRendering: true,
+          scrollX: 0,
+          scrollY: 0
+        },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      await html2pdf().set(opt).from(element).save();
+
+      // Restore style attributes
+      element.className = originalClassName;
+      element.style.position = originalStylePosition;
+      element.style.left = originalStyleLeft;
+      element.style.top = originalStyleTop;
+      element.style.width = originalStyleWidth;
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      alert('حدث خطأ فني أثناء تحويل وتنزيل مستند PDF المباشر.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
 
   // --- SALES STATISTICS COMPUTATIONS ---
   const processedStats = useMemo(() => {
@@ -1198,6 +1268,32 @@ export default function AdminDashboard({
           {/* Tab 1: OVERVIEW & STATS */}
           {activeTab === 'overview' && (
             <div className="space-y-8 text-right">
+              {/* PDF Report Generation Panel */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all hover:border-brand-blue/30">
+                <div className="flex items-start gap-4">
+                  <div className="p-3.5 bg-brand-blue/10 text-brand-blue rounded-xl shrink-0">
+                    <FileText className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                      <span>نظام التقارير الذكي وتصدير PDF</span>
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[9px] rounded-full font-black">جاهز للطباعة</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed max-w-2xl">
+                      قم بتوليد تقرير رسمي شامل يحاكي نشاط المتجر بالكامل؛ ويشمل ذلك مؤشرات المبيعات، الأرباح الصافية، والكميات المتبقية من السلع، مع جرد دقيق لأرباح ومبيعات كل مسوّق مسجل وقائمة الزبائن بالتفصيل.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReportModal(true)}
+                  className="bg-brand-blue hover:bg-brand-blue/95 text-white text-xs font-bold px-5 py-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow shrink-0"
+                >
+                  <FileText className="h-4.5 w-4.5" />
+                  <span>توليد التقرير الشامل (PDF)</span>
+                </button>
+              </div>
+
               {/* Main Bento Cards Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                 <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 relative overflow-hidden shadow">
@@ -3016,59 +3112,167 @@ export default function AdminDashboard({
                             })
                             .map((aff) => {
                               const refUrl = `${getPublicOrigin()}/?ref=${aff.code}`;
+                              const isExpanded = expandedAffiliateId === aff.id;
+                              const affiliateOrders = orders.filter(
+                                o => (o.referrer || '').trim().toUpperCase() === aff.code.trim().toUpperCase()
+                              );
+
                               return (
-                                <tr key={aff.id} className="hover:bg-slate-900/30 transition-colors">
-                                  <td className="py-3.5 pr-2 font-black text-right">
-                                    <div className="flex items-center gap-2 justify-start">
-                                      <div className="h-8 w-8 rounded-full bg-brand-blue/10 border border-brand-blue/20 flex items-center justify-center text-brand-blue font-black text-xs shrink-0">
-                                        {aff.name.trim().charAt(0)}
+                                <React.Fragment key={aff.id}>
+                                  <tr 
+                                    onClick={() => setExpandedAffiliateId(isExpanded ? null : aff.id)}
+                                    className="hover:bg-slate-900/30 transition-colors cursor-pointer"
+                                  >
+                                    <td className="py-3.5 pr-2 font-black text-right">
+                                      <div className="flex items-center gap-2 justify-start">
+                                        {isExpanded ? (
+                                          <ChevronUp className="h-4 w-4 text-brand-blue shrink-0" />
+                                        ) : (
+                                          <ChevronDown className="h-4 w-4 text-slate-500 shrink-0" />
+                                        )}
+                                        <div className="h-8 w-8 rounded-full bg-brand-blue/10 border border-brand-blue/20 flex items-center justify-center text-brand-blue font-black text-xs shrink-0">
+                                          {aff.name.trim().charAt(0)}
+                                        </div>
+                                        <div className="text-right">
+                                          <span className="block text-white text-xs font-black">{aff.name}</span>
+                                          <div className="flex flex-col gap-0.5 mt-0.5">
+                                            <span className="text-[10px] text-slate-500 block">
+                                              العمولة: {aff.commissionRate !== undefined && aff.commissionRate !== null ? `${aff.commissionRate}%` : `${siteSettings.referralCommissionRate || 10}% (عامة)`}
+                                            </span>
+                                            <span className="text-[10px] text-brand-blue font-bold block hover:underline">
+                                              {isExpanded ? 'إخفاء المشترين والزبائن 👥' : `عرض المشترين المحالين (${affiliateOrders.length}) 👥`}
+                                            </span>
+                                          </div>
+                                        </div>
                                       </div>
-                                      <div className="text-right">
-                                        <span className="block text-white text-xs">{aff.name}</span>
-                                        <span className="text-[10px] text-slate-500 block">
-                                          العمولة: {aff.commissionRate !== undefined && aff.commissionRate !== null ? `${aff.commissionRate}%` : `${siteSettings.referralCommissionRate || 10}% (عامة)`}
-                                        </span>
+                                    </td>
+                                    <td className="py-3.5 font-mono font-black text-slate-300 text-right">
+                                      <span className="bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">
+                                        {aff.code}
+                                      </span>
+                                    </td>
+                                    <td className="py-3.5 font-mono text-right">
+                                      <span className="block font-black">{aff.totalOrders || 0} طلب</span>
+                                      <span className="text-[10px] text-brand-blue block mt-0.5">👥 {affiliateOrders.length} زبائن</span>
+                                    </td>
+                                    <td className="py-3.5 font-mono text-slate-300 text-right">{formatPrice(aff.totalSales || 0)}</td>
+                                    <td className="py-3.5 font-mono text-emerald-400 font-black text-sm text-right">{formatPrice(aff.commissionBalance || 0)}</td>
+                                    <td className="py-3.5 pl-2 text-left">
+                                      <div className="flex items-center gap-2 justify-end">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigator.clipboard.writeText(refUrl);
+                                            triggerNoti('تم نسخ رابط الإحالة بنجاح 🔗');
+                                          }}
+                                          className="bg-brand-blue/10 hover:bg-brand-blue/25 text-brand-blue text-[10px] font-black px-3 py-1.5 rounded-xl border border-brand-blue/20 transition-all flex items-center gap-1 cursor-pointer"
+                                          title="نسخ رابط الإحالة الفريد للمسوق"
+                                        >
+                                          <span>نسخ الرابط 🔗</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            startEditAffiliate(aff);
+                                          }}
+                                          className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-slate-850 transition-all cursor-pointer"
+                                        >
+                                          تعديل
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteAffiliate(aff.id, aff.name);
+                                          }}
+                                          className="bg-rose-500/10 hover:bg-rose-500/25 text-rose-400 text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-rose-500/20 transition-all cursor-pointer"
+                                        >
+                                          حذف
+                                        </button>
                                       </div>
-                                    </div>
-                                  </td>
-                                  <td className="py-3.5 font-mono font-black text-slate-300 text-right">
-                                    <span className="bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">
-                                      {aff.code}
-                                    </span>
-                                  </td>
-                                  <td className="py-3.5 font-mono text-right">{aff.totalOrders || 0} طلب</td>
-                                  <td className="py-3.5 font-mono text-slate-300 text-right">{formatPrice(aff.totalSales || 0)}</td>
-                                  <td className="py-3.5 font-mono text-emerald-400 font-black text-sm text-right">{formatPrice(aff.commissionBalance || 0)}</td>
-                                  <td className="py-3.5 pl-2 text-left">
-                                    <div className="flex items-center gap-2 justify-end">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          navigator.clipboard.writeText(refUrl);
-                                          triggerNoti('تم نسخ رابط الإحالة بنجاح 🔗');
-                                        }}
-                                        className="bg-brand-blue/10 hover:bg-brand-blue/25 text-brand-blue text-[10px] font-black px-3 py-1.5 rounded-xl border border-brand-blue/20 transition-all flex items-center gap-1 cursor-pointer"
-                                        title="نسخ رابط الإحالة الفريد للمسوق"
-                                      >
-                                        <span>نسخ الرابط 🔗</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => startEditAffiliate(aff)}
-                                        className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-slate-850 transition-all cursor-pointer"
-                                      >
-                                        تعديل
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleDeleteAffiliate(aff.id, aff.name)}
-                                        className="bg-rose-500/10 hover:bg-rose-500/25 text-rose-400 text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-rose-500/20 transition-all cursor-pointer"
-                                      >
-                                        حذف
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
+                                    </td>
+                                  </tr>
+
+                                  {/* Buyers list for this affiliate */}
+                                  {isExpanded && (
+                                    <tr className="bg-black/60">
+                                      <td colSpan={6} className="p-4 border-t border-b border-slate-950 bg-black/40">
+                                        <div className="space-y-3 text-right">
+                                          <h4 className="text-xs font-black !text-white flex items-center gap-1.5 mb-2">
+                                            <span className="!text-white font-black">👥 قائمة المشترين والزبائن المحالين من هذا المسوّق ({affiliateOrders.length} زبون)</span>
+                                          </h4>
+                                          
+                                          {affiliateOrders.length === 0 ? (
+                                            <p className="text-[11px] text-slate-500 font-bold py-2">لا يوجد أي مبيعات أو مشترين مسجلين لهذا المسوّق بعد.</p>
+                                          ) : (
+                                            <div className="bg-black/50 border border-slate-900 rounded-2xl overflow-hidden text-xs max-h-72 overflow-y-auto">
+                                              <table className="w-full text-right">
+                                                <thead className="bg-slate-950 text-slate-400 font-bold border-b border-slate-900">
+                                                  <tr>
+                                                    <th className="p-2.5">المشتري والهاتف</th>
+                                                    <th className="p-2.5">البلدية والعنوان</th>
+                                                    <th className="p-2.5 text-center">التاريخ</th>
+                                                    <th className="p-2.5 text-center">الحالة</th>
+                                                    <th className="p-2.5 text-left">قيمة الطلب</th>
+                                                    <th className="p-2.5 text-center">الإجراء</th>
+                                                  </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-950">
+                                                  {affiliateOrders.map((ord) => (
+                                                    <tr key={ord.id} className="hover:bg-slate-950/60 transition-colors">
+                                                      <td className="p-2.5">
+                                                        <div className="flex flex-col">
+                                                          <span className="font-extrabold text-white text-[11px]">{ord.customerName}</span>
+                                                          <span className="text-[10px] text-slate-500 font-mono mt-0.5">{ord.phone}</span>
+                                                        </div>
+                                                      </td>
+                                                      <td className="p-2.5">
+                                                        <div className="flex flex-col">
+                                                          <span className="font-bold text-slate-200">{ord.municipality}</span>
+                                                          {ord.address && (
+                                                            <span className="text-[10px] text-slate-500 truncate max-w-[150px]">{ord.address}</span>
+                                                          )}
+                                                        </div>
+                                                      </td>
+                                                      <td className="p-2.5 text-center text-[10px] text-slate-400 font-mono">{ord.date}</td>
+                                                      <td className="p-2.5 text-center">
+                                                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border ${
+                                                          ord.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                                          ord.status === 'confirmed' ? 'bg-blue-500/10 text-brand-blue border-blue-500/20' :
+                                                          ord.status === 'shipped' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                                          'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                        }`}>
+                                                          {ord.status === 'pending' ? 'قيد الانتظار' :
+                                                           ord.status === 'confirmed' ? 'تم التأكيد' :
+                                                           ord.status === 'shipped' ? 'مع المندوب' : 'تم الاستلام والدفع'}
+                                                        </span>
+                                                      </td>
+                                                      <td className="p-2.5 text-left font-black text-white font-mono">{formatPrice(ord.total)}</td>
+                                                      <td className="p-2.5 text-center">
+                                                        <button
+                                                          type="button"
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedOrder(ord);
+                                                          }}
+                                                          className="bg-brand-blue/10 hover:bg-brand-blue/25 text-brand-blue text-[10px] font-black px-2.5 py-1 rounded-lg border border-brand-blue/20 transition-all cursor-pointer"
+                                                        >
+                                                          عرض التفاصيل 🔎
+                                                        </button>
+                                                      </td>
+                                                    </tr>
+                                                  ))}
+                                                </tbody>
+                                              </table>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
                               );
                             })}
                         </tbody>
@@ -3099,7 +3303,7 @@ export default function AdminDashboard({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
               <div>
                 <span className="text-[10px] text-slate-400 font-bold block mb-1">تفاصيل طلبية رقم:</span>
-                <h3 className="text-lg font-black font-mono text-brand-blue">{selectedOrder.id}</h3>
+                <h3 className="text-lg font-black font-mono text-brand-blue">{orders.findIndex(o => o.id === selectedOrder.id) + 1}</h3>
                 <span className="text-xs text-slate-500 font-mono">تاريخ الطلب: {selectedOrder.date}</span>
               </div>
               <div className="flex items-center gap-2.5">
@@ -3340,6 +3544,490 @@ export default function AdminDashboard({
               >
                 <span>تراجع وإلغاء</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Complete Site Report PDF Preview Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-[60] text-right" dir="rtl">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl relative text-slate-100 animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-800 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-brand-blue/10 text-brand-blue rounded-xl">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">معاينة التقرير العام الشامل قبل الطباعة</h3>
+                  <p className="text-[10px] text-slate-400 font-bold">يمكنك مراجعة البيانات بالأسفل ومن ثم حفظها كـ PDF أو طباعتها مباشرة</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReportModal(false)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Preview Area */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-950/50">
+              <div className="bg-white text-slate-900 p-8 rounded-2xl shadow-inner border border-slate-200 text-right text-xs max-w-4xl mx-auto space-y-6 select-none leading-relaxed">
+                {/* Simulated Printed Page Header */}
+                <div className="flex items-start justify-between border-b-2 border-slate-800 pb-4">
+                  <div>
+                    <h1 className="text-xl font-black text-slate-900">متجر توقرت المدرسي</h1>
+                    <p className="text-[10px] text-slate-500 font-bold mt-1">بوابتك المتكاملة للمستلزمات الدراسية بولاية توقرت</p>
+                    <p className="text-[10px] text-slate-400 mt-2 font-mono">البلد: الجزائر | الولاية: توقرت</p>
+                  </div>
+                  <div className="text-left">
+                    <span className="px-3 py-1 bg-brand-blue/10 text-brand-blue rounded-full text-[10px] font-black">تقرير رسمي معتمد</span>
+                    <p className="text-[10px] text-slate-500 font-mono mt-2">تاريخ التصدير: {new Date().toLocaleDateString('ar-DZ', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    <p className="text-[10px] text-slate-400 font-mono mt-1">الوقت: {new Date().toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                </div>
+
+                {/* Report Title */}
+                <div className="text-center py-2">
+                  <h2 className="text-base font-black text-slate-900 underline underline-offset-4 decoration-brand-blue">التقرير الإحصائي الشامل والتحليلي لنشاط المتجر</h2>
+                  <p className="text-[10px] text-slate-500 mt-1.5 font-bold">يغطي كافة المعاملات المالية، أداء المسوقين بالعمولة، حركة المنتجات والمخزون الحالي</p>
+                </div>
+
+                {/* Section 1: Financial & Sales Indicators */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-slate-900 border-r-4 border-brand-blue pr-2 py-0.5">أولاً: المؤشرات المالية والمبيعات الكلية</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 text-right">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <span className="text-slate-500 text-[10px] font-bold block">إجمالي الإيرادات المحققة</span>
+                      <span className="text-sm font-black text-emerald-700 block mt-1">{formatPrice(totalRevenue)}</span>
+                      <span className="text-[9px] text-slate-400 block mt-0.5">من الطلبيات المستلمة</span>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <span className="text-slate-500 text-[10px] font-bold block">صافي الأرباح الفعلية</span>
+                      <span className="text-sm font-black text-teal-700 block mt-1">{formatPrice(totalProfit)}</span>
+                      <span className="text-[9px] text-slate-400 block mt-0.5">بعد خصم عمولة المسوقين</span>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <span className="text-slate-500 text-[10px] font-bold block">صافي الأرباح المتوقعة</span>
+                      <span className="text-sm font-black text-blue-700 block mt-1">{formatPrice(totalExpectedProfit)}</span>
+                      <span className="text-[9px] text-slate-400 block mt-0.5">لكامل الطلبات بالمخزن</span>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <span className="text-slate-500 text-[10px] font-bold block">إجمالي عدد الطلبات</span>
+                      <span className="text-sm font-black text-slate-900 block mt-1">{stats.totalOrders} طلبية</span>
+                      <span className="text-[9px] text-slate-400 block mt-0.5">بمتوسط {formatPrice(stats.totalOrders > 0 ? Math.round(totalRevenue / stats.totalOrders) : 0)} / طلب</span>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <span className="text-slate-500 text-[10px] font-bold block">إجمالي عدد زوار الموقع</span>
+                      <span className="text-sm font-black text-purple-700 block mt-1">{visitorsCount.toLocaleString()} زائر</span>
+                      <span className="text-[9px] text-slate-400 block mt-0.5">حركة حقيقية بولاية توقرت</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 2: Affiliates Performance */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-slate-900 border-r-4 border-purple-500 pr-2 py-0.5">ثانياً: حركة وأداء المسوقين بالعمولة (Affiliate Program)</h3>
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <table className="w-full text-right text-[11px]">
+                      <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                        <tr>
+                          <th className="p-2">الاسم</th>
+                          <th className="p-2">الرمز (Code)</th>
+                          <th className="p-2 text-center">الطلبيات</th>
+                          <th className="p-2 text-left">إجمالي المبيعات</th>
+                          <th className="p-2 text-left">العمولة المستحقة</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {affiliates.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="p-3 text-center text-slate-400 font-bold">لا يوجد مسوقين مسجلين بالشبكة حالياً.</td>
+                          </tr>
+                        ) : (
+                          affiliates.map((aff) => {
+                            const affiliateOrders = orders.filter(
+                              o => (o.referrer || '').trim().toUpperCase() === aff.code.trim().toUpperCase()
+                            );
+                            return (
+                              <React.Fragment key={aff.id}>
+                                <tr className="hover:bg-slate-50 bg-slate-50/20">
+                                  <td className="p-2 font-black text-slate-800">{aff.name}</td>
+                                  <td className="p-2 font-mono font-bold text-brand-blue">{aff.code}</td>
+                                  <td className="p-2 text-center font-mono font-black">{aff.totalOrders || 0}</td>
+                                  <td className="p-2 text-left font-mono font-bold">{formatPrice(aff.totalSales || 0)}</td>
+                                  <td className="p-2 text-left font-mono font-black text-emerald-600">{formatPrice(aff.commissionBalance || 0)}</td>
+                                </tr>
+                                {affiliateOrders.length > 0 && (
+                                  <tr>
+                                    <td colSpan={5} className="p-2.5 bg-slate-50/50">
+                                      <div className="text-[10px] text-slate-600 mr-4 border-r-2 border-purple-300 pr-2 space-y-1">
+                                        <span className="font-extrabold text-purple-800 block mb-1">👥 المشترون والزبائن المحالون من هذا المسوّق ({affiliateOrders.length}):</span>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-slate-700">
+                                          {affiliateOrders.map((o, idx) => (
+                                            <div key={o.id} className="flex justify-between border-b border-slate-200/60 pb-0.5">
+                                              <span>{idx + 1}. {o.customerName} ({o.municipality})</span>
+                                              <span className="font-mono text-slate-600 font-bold">{formatPrice(o.total)}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Section 3: Best Selling Products & Packs */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-slate-900 border-r-4 border-emerald-500 pr-2 py-0.5">ثالثاً: حركة السلع والمنتجات الأكثر طلباً</h3>
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <table className="w-full text-right text-[11px]">
+                      <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                        <tr>
+                          <th className="p-2">المنتج / الباقة المدرسية</th>
+                          <th className="p-2">الفئة</th>
+                          <th className="p-2 text-center">الكمية المباعة</th>
+                          <th className="p-2 text-left">سعر القطعة</th>
+                          <th className="p-2 text-left">مجموع المبيعات الكلية</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {processedStats.slice(0, 5).map((p, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            <td className="p-2 font-black text-slate-800 flex items-center gap-1">
+                              <span>{p.name}</span>
+                              {p.isPack && <span className="px-1.5 py-0.5 bg-brand-blue/10 text-brand-blue text-[8px] rounded-full font-black">باقة</span>}
+                            </td>
+                            <td className="p-2 text-slate-500 font-bold">{p.category}</td>
+                            <td className="p-2 text-center font-mono font-bold text-slate-900">{p.unitsSold} وحدة</td>
+                            <td className="p-2 text-left font-mono">{formatPrice(p.price)}</td>
+                            <td className="p-2 text-left font-mono font-black text-teal-700">{formatPrice(p.unitsSold * p.price)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Section 4: Recent Orders Log */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-slate-900 border-r-4 border-blue-500 pr-2 py-0.5">رابعاً: آخر 10 طلبيات تمت في المتجر</h3>
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <table className="w-full text-right text-[10px]">
+                      <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                        <tr>
+                          <th className="p-2">#</th>
+                          <th className="p-2">الزبون</th>
+                          <th className="p-2">الهاتف</th>
+                          <th className="p-2">البلدية والعنوان</th>
+                          <th className="p-2 text-center">التاريخ</th>
+                          <th className="p-2 text-center">الحالة</th>
+                          <th className="p-2 text-left">المبلغ</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {orders.slice(0, 10).map((ord, idx) => (
+                          <tr key={ord.id} className="hover:bg-slate-50">
+                            <td className="p-2 font-mono font-black">#{idx + 1}</td>
+                            <td className="p-2 font-black text-slate-800">{ord.customerName}</td>
+                            <td className="p-2 font-mono">{ord.phone}</td>
+                            <td className="p-2 font-bold text-slate-600">{ord.municipality}</td>
+                            <td className="p-2 text-center font-mono">{ord.date}</td>
+                            <td className="p-2 text-center">
+                              <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-black border ${
+                                ord.status === 'pending' ? 'bg-amber-500/10 text-amber-700 border-amber-200' :
+                                ord.status === 'confirmed' ? 'bg-blue-500/10 text-brand-blue border-blue-200' :
+                                ord.status === 'shipped' ? 'bg-purple-500/10 text-purple-700 border-purple-200' :
+                                'bg-emerald-500/10 text-emerald-700 border-emerald-200'
+                              }`}>
+                                {ord.status === 'pending' ? 'قيد الانتظار' :
+                                 ord.status === 'confirmed' ? 'تم التأكيد' :
+                                 ord.status === 'shipped' ? 'مع المندوب' : 'تم الاستلام والدفع'}
+                              </span>
+                            </td>
+                            <td className="p-2 text-left font-mono font-black text-slate-900">{formatPrice(ord.total)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Page Footer / Stamp Area */}
+                <div className="flex items-center justify-between pt-6 border-t border-slate-300 mt-6 text-[10px]">
+                  <div>
+                    <p className="font-bold text-slate-500">تم إنشاؤه بواسطة: نظام المتجر الإداري الذكي 💻</p>
+                    <p className="text-slate-400 mt-0.5">معلومات دقيقة مدعومة بخادم Firestore المتكامل</p>
+                  </div>
+                  <div className="text-center bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 min-w-[120px]">
+                    <span className="block text-slate-400 text-[8px] font-black mb-1">ختم إدارة المتجر الرسمي</span>
+                    <span className="font-black text-brand-blue text-[11px] block tracking-widest">TOUGGOURT STORE</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="p-5 border-t border-slate-800 shrink-0 bg-slate-900 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setShowReportModal(false)}
+                className="py-3 px-5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                <span>إغلاق المعاينة</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isDownloadingPdf}
+                onClick={handleDownloadPdfDirectly}
+                className="py-3 px-6 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-md hover:shadow-lg"
+              >
+                {isDownloadingPdf ? (
+                  <>
+                    <RefreshCw className="h-4.5 w-4.5 animate-spin" />
+                    <span>جاري توليد وتنزيل ملف PDF... ⏳</span>
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-4.5 w-4.5" />
+                    <span>تنزيل ملف PDF مباشرة 📥📄</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden container specifically for browser window.print() */}
+      {showReportModal && (
+        <div id="print-report-container" className="hidden">
+          <div className="bg-white text-slate-900 p-8 text-right text-xs space-y-6 leading-relaxed" dir="rtl">
+            {/* Printed Page Header */}
+            <div className="flex items-start justify-between border-b-2 border-slate-800 pb-4">
+              <div>
+                <h1 className="text-2xl font-black text-slate-900">متجر توقرت المدرسي</h1>
+                <p className="text-xs text-slate-500 font-bold mt-1">بوابتك المتكاملة للمستلزمات الدراسية بولاية توقرت</p>
+                <p className="text-xs text-slate-400 mt-2 font-mono">البلد: الجزائر | الولاية: توقرت</p>
+              </div>
+              <div className="text-left">
+                <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-black">تقرير رسمي معتمد</span>
+                <p className="text-xs text-slate-500 font-mono mt-3">تاريخ التصدير: {new Date().toLocaleDateString('ar-DZ', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                <p className="text-xs text-slate-400 font-mono mt-1">الوقت: {new Date().toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' })}</p>
+              </div>
+            </div>
+
+            {/* Report Title */}
+            <div className="text-center py-4">
+              <h2 className="text-xl font-black text-slate-900 underline underline-offset-4 decoration-blue-600">التقرير الإحصائي الشامل والتحليلي لنشاط المتجر</h2>
+              <p className="text-xs text-slate-500 mt-2 font-bold">يغطي كافة المعاملات المالية، أداء المسوقين بالعمولة، حركة المنتجات والمخزون الحالي</p>
+            </div>
+
+            {/* Section 1: Financial & Sales Indicators */}
+            <div className="space-y-3 print-avoid-break">
+              <h3 className="text-sm font-black text-slate-900 border-r-4 border-blue-600 pr-2.5 py-0.5">أولاً: المؤشرات المالية والمبيعات الكلية</h3>
+              <div className="grid grid-cols-5 gap-3">
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span className="text-slate-500 text-[10px] font-bold block">إجمالي الإيرادات المحققة</span>
+                  <span className="text-sm font-black text-emerald-700 block mt-1">{formatPrice(totalRevenue)}</span>
+                  <span className="text-[9px] text-slate-400 block mt-1">من الطلبيات المستلمة والمسددة</span>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span className="text-slate-500 text-[10px] font-bold block">صافي الأرباح الفعلية</span>
+                  <span className="text-sm font-black text-teal-700 block mt-1">{formatPrice(totalProfit)}</span>
+                  <span className="text-[9px] text-slate-400 block mt-1">بعد خصم عمولة المسوقين</span>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span className="text-slate-500 text-[10px] font-bold block">صافي الأرباح المتوقعة</span>
+                  <span className="text-sm font-black text-blue-700 block mt-1">{formatPrice(totalExpectedProfit)}</span>
+                  <span className="text-[9px] text-slate-400 block mt-1">لكامل الطلبات بالمخزن</span>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span className="text-slate-500 text-[10px] font-bold block">إجمالي عدد الطلبات</span>
+                  <span className="text-sm font-black text-slate-900 block mt-1">{stats.totalOrders} طلبية</span>
+                  <span className="text-[9px] text-slate-400 block mt-1">بمتوسط {formatPrice(stats.totalOrders > 0 ? Math.round(totalRevenue / stats.totalOrders) : 0)} / طلب</span>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span className="text-slate-500 text-[10px] font-bold block">إجمالي زوار الموقع</span>
+                  <span className="text-sm font-black text-purple-700 block mt-1">{visitorsCount.toLocaleString()} زائر</span>
+                  <span className="text-[9px] text-slate-400 block mt-1">حركة نشطة بولاية توقرت</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Affiliates Performance */}
+            <div className="space-y-3 print-avoid-break">
+              <h3 className="text-sm font-black text-slate-900 border-r-4 border-purple-500 pr-2.5 py-0.5">ثانياً: حركة وأداء المسوقين بالعمولة (Affiliate Program)</h3>
+              <div className="border border-slate-300 rounded-xl overflow-hidden">
+                <table className="w-full text-right text-xs">
+                  <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-300">
+                    <tr>
+                      <th className="p-3">الاسم الكلي</th>
+                      <th className="p-3">الرمز (Code)</th>
+                      <th className="p-3 text-center">الطلبيات الكلية</th>
+                      <th className="p-3 text-left">إجمالي المبيعات</th>
+                      <th className="p-3 text-left">العمولة المستحقة</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {affiliates.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="p-3 text-center text-slate-400 font-bold">لا يوجد مسوقين مسجلين بالشبكة حالياً.</td>
+                      </tr>
+                    ) : (
+                      affiliates.map((aff) => {
+                        const affiliateOrders = orders.filter(
+                          o => (o.referrer || '').trim().toUpperCase() === aff.code.trim().toUpperCase()
+                        );
+                        return (
+                          <React.Fragment key={aff.id}>
+                            <tr className="bg-slate-50/40">
+                              <td className="p-3 font-black text-slate-800">{aff.name}</td>
+                              <td className="p-3 font-mono font-bold text-blue-600">{aff.code}</td>
+                              <td className="p-3 text-center font-mono font-black">{aff.totalOrders || 0}</td>
+                              <td className="p-3 text-left font-mono font-bold">{formatPrice(aff.totalSales || 0)}</td>
+                              <td className="p-3 text-left font-mono font-black text-emerald-600">{formatPrice(aff.commissionBalance || 0)}</td>
+                            </tr>
+                            {affiliateOrders.length > 0 && (
+                              <tr className="print-avoid-break">
+                                <td colSpan={5} className="p-3 bg-white">
+                                  <div className="text-[11px] text-slate-600 mr-6 border-r-2 border-purple-400 pr-3 space-y-1">
+                                    <span className="font-black text-purple-700 block mb-1">👥 قائمة الزبائن والمشترين المحالين من هذا المسوّق:</span>
+                                    <div className="grid grid-cols-2 gap-x-8 gap-y-1.5">
+                                      {affiliateOrders.map((o, idx) => (
+                                        <div key={o.id} className="flex justify-between border-b border-slate-100 pb-1">
+                                          <span className="font-bold text-slate-800">{idx + 1}. {o.customerName} - {o.municipality} ({o.date})</span>
+                                          <span className="font-mono text-slate-600 font-black">{formatPrice(o.total)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Section 3: Best Selling Products & Packs */}
+            <div className="space-y-3 print-avoid-break">
+              <h3 className="text-sm font-black text-slate-900 border-r-4 border-emerald-500 pr-2.5 py-0.5">ثالثاً: حركة السلع والمنتجات الأكثر طلباً</h3>
+              <div className="border border-slate-300 rounded-xl overflow-hidden">
+                <table className="w-full text-right text-xs">
+                  <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-300">
+                    <tr>
+                      <th className="p-3">المنتج / الباقة المدرسية</th>
+                      <th className="p-3">الفئة</th>
+                      <th className="p-3 text-center">الكمية المباعة</th>
+                      <th className="p-3 text-left">سعر القطعة</th>
+                      <th className="p-3 text-left">مجموع المبيعات الكلية</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {processedStats.slice(0, 10).map((p, idx) => (
+                      <tr key={idx}>
+                        <td className="p-3 font-black text-slate-800">
+                          {p.name}
+                          {p.isPack && <span className="mr-1 px-1.5 py-0.5 bg-blue-100 text-blue-800 text-[10px] rounded-full font-black">باقة</span>}
+                        </td>
+                        <td className="p-3 text-slate-500 font-bold">{p.category}</td>
+                        <td className="p-3 text-center font-mono font-bold text-slate-900">{p.unitsSold} وحدة</td>
+                        <td className="p-3 text-left font-mono">{formatPrice(p.price)}</td>
+                        <td className="p-3 text-left font-mono font-black text-teal-700">{formatPrice(p.unitsSold * p.price)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Section 4: Recent Orders Log */}
+            <div className="space-y-3 print-avoid-break">
+              <h3 className="text-sm font-black text-slate-900 border-r-4 border-blue-500 pr-2.5 py-0.5">رابعاً: آخر الطلبيات المستلمة والمسجلة بالمتجر</h3>
+              <div className="border border-slate-300 rounded-xl overflow-hidden">
+                <table className="w-full text-right text-xs">
+                  <thead className="bg-slate-100 text-slate-600 font-bold border-b border-slate-300">
+                    <tr>
+                      <th className="p-3">#</th>
+                      <th className="p-3">الزبون</th>
+                      <th className="p-3">رقم الهاتف</th>
+                      <th className="p-3">البلدية والعنوان</th>
+                      <th className="p-3 text-center">التاريخ</th>
+                      <th className="p-3 text-center">الحالة</th>
+                      <th className="p-3 text-left">المبلغ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {orders.slice(0, 15).map((ord, idx) => (
+                      <tr key={ord.id}>
+                        <td className="p-3 font-mono font-black">#{idx + 1}</td>
+                        <td className="p-3 font-black text-slate-800">{ord.customerName}</td>
+                        <td className="p-3 font-mono">{ord.phone}</td>
+                        <td className="p-3 font-bold text-slate-600">{ord.municipality}</td>
+                        <td className="p-3 text-center font-mono">{ord.date}</td>
+                        <td className="p-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                            ord.status === 'pending' ? 'bg-amber-500/10 text-amber-700 border-amber-200' :
+                            ord.status === 'confirmed' ? 'bg-blue-500/10 text-blue-700 border-blue-200' :
+                            ord.status === 'shipped' ? 'bg-purple-500/10 text-purple-700 border-purple-200' :
+                            'bg-emerald-500/10 text-emerald-700 border-emerald-200'
+                          }`}>
+                            {ord.status === 'pending' ? 'قيد الانتظار' :
+                             ord.status === 'confirmed' ? 'تم التأكيد' :
+                             ord.status === 'shipped' ? 'مع المندوب' : 'تم الاستلام والدفع'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-left font-mono font-black text-slate-900">{formatPrice(ord.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* General Warehouse Info */}
+            <div className="space-y-3 print-avoid-break">
+              <h3 className="text-sm font-black text-slate-900 border-r-4 border-slate-700 pr-2.5 py-0.5">خامساً: جرد المخزون والقيمة الرأسمالية للمستودع</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <span className="text-slate-500 text-xs font-bold block">إجمالي تكلفة شراء المخزون الحالي</span>
+                  <span className="text-lg font-black text-slate-900 block mt-1.5">{formatPrice(inventoryStats.totalPurchaseCost)}</span>
+                  <span className="text-[10px] text-slate-400 block mt-1">القيمة المالية الرأسمالية لكافة السلع والكتب والكراريس المخزنة</span>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <span className="text-slate-500 text-xs font-bold block">الأرباح التقديرية الكامنة بالمخزن</span>
+                  <span className="text-lg font-black text-emerald-700 block mt-1.5">{formatPrice(inventoryStats.totalPotentialProfit)}</span>
+                  <span className="text-[10px] text-slate-400 block mt-1">صافي العوائد المتوقعة بعد تسويق وبيع كامل المخزون المتوفر</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Page Footer / Stamp Area */}
+            <div className="flex items-center justify-between pt-8 border-t border-slate-300 mt-8 text-xs print-avoid-break">
+              <div>
+                <p className="font-bold text-slate-500">تم إنشاؤه بواسطة: نظام المتجر الإداري الذكي 💻</p>
+                <p className="text-slate-400 mt-1">تقرير رسمي معزز بقواعد بيانات حية وفورية بولاية توقرت</p>
+              </div>
+              <div className="text-center bg-slate-50 px-6 py-3 rounded-xl border border-slate-200 min-w-[150px]">
+                <span className="block text-slate-400 text-[10px] font-black mb-1">ختم وتوقيع الإدارة الرسمي</span>
+                <span className="font-black text-blue-600 text-sm block tracking-widest">TOUGGOURT STORE</span>
+              </div>
             </div>
           </div>
         </div>

@@ -272,4 +272,46 @@ body {
   color: #0f172a !important;
 }
 
+/* Print Overrides */
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+    font-size: 11pt !important;
+  }
+  
+  /* Hide every element on the page */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Show only our dedicated report container and its children */
+  #print-report-container, #print-report-container * {
+    visibility: visible;
+  }
+  
+  #print-report-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    background-color: white !important;
+    color: black !important;
+    direction: rtl !important;
+    text-align: right !important;
+  }
+  
+  /* Remove page header/footer margins injected by browsers */
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+  
+  .print-avoid-break {
+    page-break-inside: avoid;
+  }
+}
+
 

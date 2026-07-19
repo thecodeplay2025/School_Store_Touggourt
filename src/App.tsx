@@ -1660,7 +1660,7 @@ export default function App() {
                   onClick={() => {
                     handleClearCart();
                     setIsClearCartModalOpen(false);
-                    setToast({ message: 'تم إفراغ السلة بنجاح 🗑️', type: 'success' });
+                    showToast('تم إفراغ السلة بنجاح 🗑️', 'success');
                   }}
                   className="bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black py-3 px-6 rounded-2xl w-full transition-all cursor-pointer shadow-md shadow-rose-600/10 text-center"
                   id="modal-clear-cart-confirm"

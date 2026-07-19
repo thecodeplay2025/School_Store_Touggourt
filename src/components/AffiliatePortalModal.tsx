@@ -12,7 +12,13 @@ import {
   DollarSign,
   Clock,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  User,
+  Phone,
+  MapPin,
+  Package
 } from 'lucide-react';
 import { Affiliate, Order } from '../types';
 
@@ -35,11 +41,13 @@ export default function AffiliatePortalModal({
   const [activeAffiliate, setActiveAffiliate] = useState<Affiliate | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [copied, setCopied] = useState(false);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setActiveAffiliate(null);
+    setExpandedOrderId(null);
 
     const cleanQuery = codeQuery.trim().toUpperCase();
     if (!cleanQuery) {
@@ -252,32 +260,134 @@ export default function AffiliatePortalModal({
                         <table className="w-full">
                           <thead className="bg-slate-900 text-slate-400 font-bold border-b border-slate-850">
                             <tr>
-                              <th className="p-3">رقم الطلبية</th>
+                              <th className="p-3">#</th>
+                              <th className="p-3">المشتري والهاتف</th>
+                              <th className="p-3">البلدية والعنوان</th>
                               <th className="p-3 text-center">التاريخ</th>
-                              <th className="p-3 text-center">حالة الدفع والتوصيل</th>
+                              <th className="p-3 text-center">حالة التوصيل</th>
                               <th className="p-3 text-left">قيمة الطلب</th>
+                              <th className="p-3 text-center">التفاصيل</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-900/60 font-semibold text-slate-300">
-                            {affiliateOrders.map((ord) => (
-                              <tr key={ord.id} className="hover:bg-slate-900/30 transition-colors">
-                                <td className="p-3 font-mono font-black text-brand-blue">{ord.id}</td>
-                                <td className="p-3 text-center text-[10px] text-slate-400 font-mono">{ord.date}</td>
-                                <td className="p-3 text-center">
-                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border ${
-                                    ord.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                    ord.status === 'confirmed' ? 'bg-blue-500/10 text-brand-blue border-blue-500/20' :
-                                    ord.status === 'shipped' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
-                                    'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                  }`}>
-                                    {ord.status === 'pending' ? 'قيد الانتظار' :
-                                     ord.status === 'confirmed' ? 'تم التأكيد' :
-                                     ord.status === 'shipped' ? 'مع المندوب' : 'تم الاستلام والدفع'}
-                                  </span>
-                                </td>
-                                <td className="p-3 text-left font-black text-white font-mono">{formatPrice(ord.total)}</td>
-                              </tr>
-                            ))}
+                            {affiliateOrders.map((ord, idx) => {
+                              const isExpanded = expandedOrderId === ord.id;
+                              return (
+                                <React.Fragment key={ord.id}>
+                                  <tr 
+                                    onClick={() => setExpandedOrderId(isExpanded ? null : ord.id)}
+                                    className="hover:bg-slate-900/30 transition-colors cursor-pointer"
+                                  >
+                                    <td className="p-3 font-mono font-black text-brand-blue">#{idx + 1}</td>
+                                    <td className="p-3">
+                                      <div className="flex flex-col">
+                                        <span className="font-extrabold text-white text-[11px] sm:text-xs flex items-center gap-1">
+                                          <User className="h-3.5 w-3.5 text-slate-400" />
+                                          {ord.customerName}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 font-mono mt-0.5 flex items-center gap-1">
+                                          <Phone className="h-3 w-3 text-slate-400" />
+                                          {ord.phone}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="p-3">
+                                      <div className="flex flex-col">
+                                        <span className="font-bold text-slate-200 text-[10px] sm:text-[11px] flex items-center gap-1">
+                                          <MapPin className="h-3.5 w-3.5 text-emerald-400" />
+                                          {ord.municipality}
+                                        </span>
+                                        {ord.address && (
+                                          <span className="text-[9px] text-slate-400 truncate max-w-[120px]" title={ord.address}>
+                                            {ord.address}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="p-3 text-center text-[10px] text-slate-400 font-mono">{ord.date}</td>
+                                    <td className="p-3 text-center">
+                                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border ${
+                                        ord.status === 'pending' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                        ord.status === 'confirmed' ? 'bg-blue-500/10 text-brand-blue border-blue-500/20' :
+                                        ord.status === 'shipped' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                        'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                      }`}>
+                                        {ord.status === 'pending' ? 'قيد الانتظار' :
+                                         ord.status === 'confirmed' ? 'تم التأكيد' :
+                                         ord.status === 'shipped' ? 'مع المندوب' : 'تم الاستلام والدفع'}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 text-left font-black text-white font-mono">{formatPrice(ord.total)}</td>
+                                    <td className="p-3 text-center">
+                                      {isExpanded ? (
+                                        <ChevronUp className="h-4 w-4 text-slate-400 mx-auto" />
+                                      ) : (
+                                        <ChevronDown className="h-4 w-4 text-slate-400 mx-auto" />
+                                      )}
+                                    </td>
+                                  </tr>
+
+                                  {/* Expanded Area */}
+                                  {isExpanded && (
+                                    <tr className="bg-slate-950/40">
+                                      <td colSpan={7} className="p-4 border-t border-b border-slate-800">
+                                        <div className="space-y-4 text-right">
+                                          {/* Customer & Delivery details */}
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/40 text-xs">
+                                            <div>
+                                              <span className="text-[10px] text-slate-500 block font-bold mb-1">معلومات المشتري:</span>
+                                              <p className="font-extrabold text-white mb-1">الاسم: {ord.customerName}</p>
+                                              <p className="font-mono text-slate-300">الهاتف: {ord.phone}</p>
+                                            </div>
+                                            <div>
+                                              <span className="text-[10px] text-slate-500 block font-bold mb-1">مكان وعنوان الإقامة:</span>
+                                              <p className="font-extrabold text-white mb-1">البلدية: {ord.municipality}</p>
+                                              <p className="text-slate-300">العنوان: {ord.address || 'لم يتم إدخال عنوان دقيق'}</p>
+                                            </div>
+                                          </div>
+
+                                          {/* Products List */}
+                                          <div className="space-y-2">
+                                            <span className="text-[10px] text-slate-500 block font-bold flex items-center gap-1">
+                                              <Package className="h-3.5 w-3.5 text-emerald-400" />
+                                              <span>المنتجات المشتراة:</span>
+                                            </span>
+                                            <div className="divide-y divide-slate-850 bg-slate-900/30 rounded-xl border border-slate-800/30 overflow-hidden">
+                                              {ord.items.map((item, itemIdx) => (
+                                                <div key={itemIdx} className="p-3 flex items-center justify-between gap-3 text-xs">
+                                                  <div className="flex items-center gap-2.5">
+                                                    {item.product.image && (
+                                                      <img 
+                                                        src={item.product.image} 
+                                                        alt={item.product.name} 
+                                                        className="w-10 h-10 object-cover rounded-lg border border-slate-850"
+                                                        referrerPolicy="no-referrer"
+                                                      />
+                                                    )}
+                                                    <div>
+                                                      <p className="font-extrabold text-white">{item.product.name}</p>
+                                                      <p className="text-[10px] text-slate-500 mt-0.5">
+                                                        سعر القطعة: {formatPrice(item.product.price)}
+                                                      </p>
+                                                    </div>
+                                                  </div>
+                                                  <div className="text-left">
+                                                    <span className="font-mono text-slate-400 block text-[10px]">الكمية: {item.quantity}</span>
+                                                    <span className="font-mono font-black text-emerald-400 block mt-0.5">
+                                                      {formatPrice(item.product.price * item.quantity)}
+                                                    </span>
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
