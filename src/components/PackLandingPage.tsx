@@ -175,7 +175,7 @@ export default function PackLandingPage({
   const detailsCard = (
     <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8 space-y-6">
       
-      {/* Title & Description */}
+      {/* Title */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
           {product.name}
@@ -185,9 +185,6 @@ export default function PackLandingPage({
             🛠️ قمت بتخصيص هذا الباك (تم تعديل الأدوات)
           </span>
         )}
-        <p className="text-slate-500 text-sm mt-3 leading-relaxed font-semibold">
-          {product.description || "حقيبة متكاملة تحتوي على جميع المستلزمات والأدوات المدرسية الضرورية والمختارة بعناية لتناسب الاحتياجات المدرسية لطلبتنا الأعزاء بجودة ممتازة وسعر مميز."}
-        </p>
       </div>
 
       {/* Price block */}

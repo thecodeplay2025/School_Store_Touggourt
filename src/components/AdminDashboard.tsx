@@ -1818,17 +1818,6 @@ export default function AdminDashboard({
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-bold text-slate-400">الوصف التفصيلي</label>
-                    <textarea
-                      required
-                      value={prodDesc}
-                      onChange={(e) => setProdDesc(e.target.value)}
-                      rows={3}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-semibold focus:outline-none focus:border-brand-blue text-right text-white"
-                      placeholder="اكتب وصفاً مفصلاً يوضح للتلاميذ جودة السلعة..."
-                    />
-                  </div>
 
                   <div className="flex items-center gap-6 pt-2">
                     <label className="flex items-center gap-2 text-xs font-bold text-slate-300 cursor-pointer">
@@ -2700,17 +2689,6 @@ export default function AdminDashboard({
                         />
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-bold text-slate-400">الوصف الموجه للأولياء والتلاميذ</label>
-                        <textarea
-                          rows={4}
-                          required
-                          placeholder="اكتب تفاصيل وإقناع حافز للأولياء لشراء الباك كامل وبأرخص الأسعار..."
-                          value={packDesc}
-                          onChange={(e) => setPackDesc(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-semibold text-white text-right"
-                        />
-                      </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
@@ -2831,7 +2809,6 @@ export default function AdminDashboard({
                                 </div>
                               </div>
 
-                              <p className="text-[10px] text-slate-400 font-bold leading-relaxed line-clamp-2">{p.description}</p>
 
                               {/* Tools list preview */}
                               <div className="bg-slate-950/70 p-3 rounded-xl space-y-1.5 border border-slate-850">
