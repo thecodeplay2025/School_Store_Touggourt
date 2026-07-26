@@ -56,6 +56,7 @@ export interface Order {
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered';
   date: string;
   referrer?: string;
+  deliveryType?: 'home' | 'office';
   commissionCalculated?: boolean;
   commissionAmount?: number;
 }

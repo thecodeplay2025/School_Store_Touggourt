@@ -39,6 +39,67 @@ async function startServer() {
     console.error("Firestore Client SDK failed to initialize on backend. Error:", err);
   }
 
+  // Telegram Notification API endpoint
+  app.post("/api/telegram-notify", async (req, res) => {
+    try {
+      const { orderId, orderData } = req.body;
+      const botToken = process.env.TELEGRAM_BOT_TOKEN;
+      const chatId = process.env.TELEGRAM_CHAT_ID || "5534070765";
+
+      if (!botToken) {
+        console.warn("TELEGRAM_BOT_TOKEN missing in environment variables.");
+        return res.status(400).json({ success: false, error: "TELEGRAM_BOT_TOKEN missing" });
+      }
+
+      if (!orderData) {
+        return res.status(400).json({ success: false, error: "Order data missing" });
+      }
+
+      const itemsList = Array.isArray(orderData.items)
+        ? orderData.items.map((it: any) => `• ${it.product?.name || 'منتج'} (الكمية: ${it.quantity})`).join("\n")
+        : "لا تتوفر تفاصيل المنتجات";
+
+      const deliveryText = orderData.deliveryType === 'home' ? 'توصيل للمنزل' : 'استلام من المكتب';
+
+      const message = `🛍️ *طلب جديد في المتجر!*
+----------------------------------
+🆔 *رقم الطلب:* \`${orderId || "جديد"}\`
+👤 *اسم الزبون:* ${orderData.customerName || "غير محدد"}
+📞 *رقم الهاتف:* \`${orderData.customerPhone || "غير محدد"}\`
+📍 *البلدية والعنوان:* ${orderData.commune || "غير محدد"} - ${orderData.address || ""}
+💰 *المبلغ الإجمالي:* *${orderData.totalPrice || 0} د.ج*
+🚚 *طريقة التوصيل:* ${deliveryText}
+
+🛒 *الطلبات:*
+${itemsList}
+
+${orderData.affiliateCode ? `👥 *رمز المسوّق:* \`${orderData.affiliateCode}\`` : ''}
+----------------------------------
+⏰ *تاريخ الطلب:* ${new Date().toLocaleString('ar-DZ')}`;
+
+      const telegramRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: message,
+          parse_mode: "Markdown"
+        })
+      });
+
+      if (!telegramRes.ok) {
+        const errText = await telegramRes.text();
+        console.error("Telegram API error:", errText);
+        return res.status(500).json({ success: false, error: errText });
+      }
+
+      return res.json({ success: true });
+    } catch (err: any) {
+      console.error("Failed to send telegram notification:", err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // Dynamic robots.txt serving
   app.get("/robots.txt", (req, res) => {
     res.type("text/plain");

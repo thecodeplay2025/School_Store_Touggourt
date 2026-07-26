@@ -748,6 +748,26 @@ export default function App() {
       console.log("[Firestore Order Save] Saving new order directly to Firestore collection 'orders' with id:", orderWithUser.id);
       await saveDocument('orders', orderWithUser.id, orderWithUser);
       console.log("[Firestore Order Save] Order successfully saved to Firestore!");
+
+      // Send real-time notification to Telegram via server API
+      fetch('/api/telegram-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: orderWithUser.id,
+          orderData: {
+            customerName: orderWithUser.customerName,
+            customerPhone: orderWithUser.phone,
+            commune: orderWithUser.municipality,
+            address: orderWithUser.address,
+            totalPrice: orderWithUser.total,
+            deliveryType: orderWithUser.deliveryType,
+            affiliateCode: orderWithUser.referrer,
+            items: orderWithUser.items
+          }
+        })
+      }).catch(e => console.warn('Telegram notification proxy call failed:', e));
+
       showToast(`تم تسجيل طلبيتك برقم ${newOrder.id} بنجاح!`, 'success');
     } catch (err) {
       console.error("[Firestore Order Save] CRITICAL EXCEPTION CAUGHT during direct Firestore write:", err);
