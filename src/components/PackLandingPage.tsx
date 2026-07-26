@@ -147,7 +147,7 @@ export default function PackLandingPage({
         <img
           src={product.image}
           alt={product.name}
-          className="max-h-full max-w-full object-contain rounded-2xl hover:scale-[1.03] transition-transform duration-500 mix-blend-multiply"
+          className="max-h-full max-w-full object-contain rounded-2xl hover:scale-[1.03] transition-transform duration-500"
           referrerPolicy="no-referrer"
         />
       </div>

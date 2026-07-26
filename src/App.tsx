@@ -1195,11 +1195,11 @@ export default function App() {
                   >
                     <div>
                       {/* 1. صورة الباك (The Pack Image) */}
-                      <div className="relative h-52 bg-gradient-to-b from-amber-50/50 to-slate-50/30 flex items-center justify-center p-5 border-b border-amber-100/70">
+                      <div className="relative h-52 bg-slate-50 flex items-center justify-center p-5 border-b border-slate-100">
                         <img
                           src={getCompatibleImageUrl(pack.image)}
                           alt={pack.name}
-                          className="max-h-full max-w-full object-contain rounded-2xl group-hover:scale-102 transition-transform duration-500 mix-blend-multiply"
+                          className="max-h-full max-w-full object-contain rounded-2xl group-hover:scale-102 transition-transform duration-500"
                           referrerPolicy="no-referrer"
                         />
                         <div className="absolute top-4 right-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-[11px] py-1.5 px-3.5 rounded-full shadow-md z-10 flex items-center gap-1">

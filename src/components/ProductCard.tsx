@@ -26,16 +26,7 @@ export default function ProductCard({
     return price.toLocaleString('ar-DZ') + ' د.ج';
   };
 
-  // Assign background gradients based on category to match Trendhub's colorful visual style
-  const bgGradients: Record<string, string> = {
-    bags: 'bg-gradient-to-br from-blue-50 to-indigo-100',
-    notebooks: 'bg-gradient-to-br from-emerald-50 to-teal-100',
-    writing: 'bg-gradient-to-br from-amber-50 to-orange-100',
-    'geometry-art': 'bg-gradient-to-br from-rose-50 to-pink-100',
-    electronics: 'bg-gradient-to-br from-violet-50 to-purple-100'
-  };
-
-  const imageBg = product.isPack ? 'bg-gradient-to-br from-yellow-50 to-amber-100/50' : (bgGradients[product.category] || 'bg-slate-100');
+  const imageBg = 'bg-slate-50';
 
   return (
     <motion.div
@@ -45,7 +36,7 @@ export default function ProductCard({
     >
       
       {/* Top half: Product Image Container */}
-      <div className={`relative aspect-square ${imageBg} overflow-hidden p-2 sm:p-4 flex items-center justify-center transition-all`}>
+      <div className={`relative aspect-square ${imageBg} border-b border-slate-100/80 overflow-hidden p-1.5 sm:p-2.5 flex items-center justify-center transition-all`}>
         {/* Pack Badge */}
         {product.isPack && (
           <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-black text-[9px] sm:text-[10px] py-0.5 px-2 sm:py-1 sm:px-3 rounded-full shadow-sm z-10" dir="rtl">
@@ -57,7 +48,7 @@ export default function ProductCard({
         <img
           src={getCompatibleImageUrl(product.image)}
           alt={product.name}
-          className="max-h-[90%] max-w-[90%] object-contain rounded-xl group-hover:scale-105 transition-transform duration-500 mix-blend-multiply"
+          className="max-h-[98%] max-w-[98%] object-contain rounded-xl group-hover:scale-105 transition-transform duration-500"
           referrerPolicy="no-referrer"
           loading="lazy"
           decoding="async"

@@ -25,16 +25,7 @@ export default function ProductQuickViewModal({
     return price.toLocaleString('ar-DZ') + ' د.ج';
   };
 
-  // Assign background gradients based on category
-  const bgGradients: Record<string, string> = {
-    bags: 'bg-gradient-to-br from-blue-50 to-indigo-100',
-    notebooks: 'bg-gradient-to-br from-emerald-50 to-teal-100',
-    writing: 'bg-gradient-to-br from-amber-50 to-orange-100',
-    'geometry-art': 'bg-gradient-to-br from-rose-50 to-pink-100',
-    electronics: 'bg-gradient-to-br from-violet-50 to-purple-100'
-  };
-
-  const imageBg = product.isPack ? 'bg-gradient-to-br from-yellow-50 to-amber-100/50' : (bgGradients[product.category] || 'bg-slate-100');
+  const imageBg = 'bg-slate-50 border-b border-slate-100';
 
   return (
     <AnimatePresence>
@@ -78,7 +69,7 @@ export default function ProductQuickViewModal({
               <img
                 src={getCompatibleImageUrl(product.image)}
                 alt={product.name}
-                className="max-h-[90%] max-w-[90%] object-contain rounded-2xl drop-shadow-md mix-blend-multiply"
+                className="max-h-[90%] max-w-[90%] object-contain rounded-2xl drop-shadow-md"
                 referrerPolicy="no-referrer"
               />
 
