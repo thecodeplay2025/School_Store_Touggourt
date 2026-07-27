@@ -68,7 +68,7 @@ export default function ProductCard({
       <div className="p-3 sm:p-4 md:p-5 flex flex-col justify-between flex-1">
         {/* Title */}
         <div className="text-right mb-2">
-          <h4 className="text-xs sm:text-sm md:text-base font-extrabold text-slate-800 line-clamp-2 hover:text-emerald-600 transition-colors leading-tight min-h-[2rem] sm:min-h-[2.5rem] flex items-center justify-end">
+          <h4 className="text-xs sm:text-sm md:text-base font-extrabold text-slate-800 line-clamp-2 hover:text-brand-blue transition-colors leading-tight min-h-[2rem] sm:min-h-[2.5rem] flex items-center justify-end">
             {product.name}
           </h4>
         </div>
@@ -92,7 +92,7 @@ export default function ProductCard({
             disabled={!product.inStock}
             className={`w-full font-extrabold text-[10px] sm:text-xs py-2 px-2.5 sm:px-3 rounded-xl flex items-center justify-center gap-1 sm:gap-1.5 transition-all shadow-3xs cursor-pointer ${
               product.inStock
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white hover:shadow-md active:scale-95'
+                ? 'bg-brand-blue hover:bg-blue-700 text-white hover:shadow-md active:scale-95'
                 : 'bg-slate-100 text-slate-400 cursor-not-allowed'
             }`}
           >

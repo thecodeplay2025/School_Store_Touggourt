@@ -43,7 +43,7 @@ async function startServer() {
   app.post("/api/telegram-notify", async (req, res) => {
     try {
       const { orderId, orderData } = req.body;
-      const botToken = process.env.TELEGRAM_BOT_TOKEN;
+      const botToken = process.env.TELEGRAM_BOT_TOKEN || "8848765681:AAFdxa6L-gdGvvYmZb1VmeGOEG8WS29lU";
       const chatId = process.env.TELEGRAM_CHAT_ID || "5534070765";
 
       if (!botToken) {
