@@ -47,7 +47,11 @@ async function startServer() {
       if (!botToken || botToken.includes("AAFdxa6L")) {
         botToken = "8848765681:AAGcUny1qyNcTrZzBQVG0O3T8kkNgqm3Tek";
       }
-      const chatId = process.env.TELEGRAM_CHAT_ID || "5534070765";
+      let TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+      if (!TELEGRAM_CHAT_ID || TELEGRAM_CHAT_ID === "5534070765") {
+        TELEGRAM_CHAT_ID = "-1004404503150";
+      }
+      console.log("TELEGRAM_CHAT_ID =", TELEGRAM_CHAT_ID);
 
       if (!botToken) {
         console.warn("TELEGRAM_BOT_TOKEN missing in environment variables.");
@@ -60,6 +64,11 @@ async function startServer() {
 
       const escapeHtml = (str: string) => (str || '').toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+      const phone = orderData.phone || orderData.customerPhone || "غير محدد";
+      const commune = orderData.municipality || orderData.commune || "غير محدد";
+      const total = orderData.total || orderData.totalPrice || 0;
+      const referrer = orderData.referrer || orderData.affiliateCode;
+
       const itemsList = Array.isArray(orderData.items)
         ? orderData.items.map((it: any) => `• ${escapeHtml(it.product?.name || 'منتج')} (الكمية: ${it.quantity})`).join("\n")
         : "لا تتوفر تفاصيل المنتجات";
@@ -70,36 +79,60 @@ async function startServer() {
 ----------------------------------
 🆔 <b>رقم الطلب:</b> <code>${escapeHtml(orderId || "جديد")}</code>
 👤 <b>اسم الزبون:</b> ${escapeHtml(orderData.customerName || "غير محدد")}
-📞 <b>رقم الهاتف:</b> <code>${escapeHtml(orderData.customerPhone || "غير محدد")}</code>
-📍 <b>البلدية والعنوان:</b> ${escapeHtml(orderData.commune || "غير محدد")} - ${escapeHtml(orderData.address || "")}
-💰 <b>المبلغ الإجمالي:</b> <b>${orderData.totalPrice || 0} د.ج</b>
+📞 <b>رقم الهاتف:</b> <code>${escapeHtml(phone)}</code>
+📍 <b>البلدية والعنوان:</b> ${escapeHtml(commune)} - ${escapeHtml(orderData.address || "")}
+💰 <b>المبلغ الإجمالي:</b> <b>${total} د.ج</b>
 🚚 <b>طريقة التوصيل:</b> ${escapeHtml(deliveryText)}
 
 🛒 <b>الطلبات:</b>
 ${itemsList}
 
-${orderData.affiliateCode ? `👥 <b>رمز المسوّق:</b> <code>${escapeHtml(orderData.affiliateCode)}</code>` : ''}
+${referrer ? `👥 <b>رمز المسوّق:</b> <code>${escapeHtml(referrer)}</code>` : ''}
 ----------------------------------
 ⏰ <b>تاريخ الطلب:</b> ${escapeHtml(new Date().toLocaleString('ar-DZ'))}`;
+
+      console.log("==========================================");
+      console.log("📡 Sending message to Telegram API...");
+      console.log("Target Chat ID:", TELEGRAM_CHAT_ID);
+      console.log("Bot Token Prefix:", botToken ? botToken.substring(0, 10) + "..." : "MISSING");
 
       const telegramRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          chat_id: chatId,
+          chat_id: TELEGRAM_CHAT_ID,
           text: message,
           parse_mode: "HTML"
         })
       });
 
-      const responseData = await telegramRes.json().catch(() => null);
+      const telegramRawText = await telegramRes.text();
+      console.log("📲 Telegram API HTTP Status:", telegramRes.status);
+      console.log("Telegram RAW Response:", telegramRawText);
+      console.log("==========================================");
 
-      if (!telegramRes.ok || !responseData?.ok) {
-        console.error("Telegram API error response:", responseData);
-        return res.status(500).json({ success: false, error: responseData?.description || "Telegram API failure" });
+      let responseData: any = null;
+      try {
+        responseData = JSON.parse(telegramRawText);
+      } catch (e) {
+        responseData = null;
       }
 
-      return res.json({ success: true });
+      if (!telegramRes.ok || !responseData?.ok) {
+        console.error("Telegram API returned error:", responseData || telegramRawText);
+        return res.status(500).json({
+          success: false,
+          error: responseData?.description || "Telegram API failure",
+          telegramResponse: responseData,
+          rawText: telegramRawText
+        });
+      }
+
+      return res.json({
+        success: true,
+        telegramResponse: responseData,
+        rawText: telegramRawText
+      });
     } catch (err: any) {
       console.error("Failed to send telegram notification:", err);
       return res.status(500).json({ success: false, error: err.message });

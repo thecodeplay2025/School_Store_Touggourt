@@ -76,6 +76,7 @@ export default function CheckoutModal({
       alert('يرجى إدخال رقم هاتف صحيح (مثال: 06XXXXXXXX أو 07XXXXXXXX).');
       return;
     }
+    console.log("[1] User clicked Confirm Order");
     if (selectedMuni.available === false) {
       alert('عذراً، الشحن متوقف مؤقتاً لهذه المنطقة. يرجى اختيار منطقة أخرى أو الاتصال بنا.');
       return;

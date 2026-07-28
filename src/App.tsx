@@ -736,74 +736,127 @@ export default function App() {
   };
 
   const handleOrderSuccess = async (newOrder: Order) => {
-    // Inject current user email if logged in (default to null instead of undefined)
     const orderWithUser = {
       ...newOrder,
       customerEmail: currentUser ? currentUser.email : null
     };
 
-    console.log("[Order Success TRACE] orderWithUser structure is:", JSON.stringify(orderWithUser, null, 2));
+    console.log("==========================================");
+    console.log("🛒 [REAL ORDER CREATION STARTED]");
+    console.log("🆔 Order ID:", orderWithUser.id);
+    console.log("👤 Customer Name:", orderWithUser.customerName);
+    console.log("📞 Phone:", orderWithUser.phone);
+    console.log("📍 Municipality:", orderWithUser.municipality);
+    console.log("🏠 Address:", orderWithUser.address);
+    console.log("💰 Total:", orderWithUser.total);
+    console.log("🛍️ Items Count:", orderWithUser.items?.length || 0);
+    console.log("==========================================");
 
     try {
-      console.log("[Firestore Order Save] Saving new order directly to Firestore collection 'orders' with id:", orderWithUser.id);
+      console.log("[2] Saving order to Firestore...");
       await saveDocument('orders', orderWithUser.id, orderWithUser);
-      console.log("[Firestore Order Save] Order successfully saved to Firestore!");
+      console.log("[3] Firestore save completed");
 
-      // Send real-time notification to Telegram via server API with client fallback
+      // Send real-time notification to Telegram
       const sendTelegramNotification = async () => {
-        const orderPayload = {
-          orderId: orderWithUser.id,
-          orderData: {
-            customerName: orderWithUser.customerName,
-            customerPhone: orderWithUser.phone,
-            commune: orderWithUser.municipality,
-            address: orderWithUser.address,
-            totalPrice: orderWithUser.total,
-            deliveryType: orderWithUser.deliveryType,
-            affiliateCode: orderWithUser.referrer,
-            items: orderWithUser.items
-          }
-        };
+        console.log("[4] Calling sendTelegramNotification...");
 
+        const escapeHtml = (str: any) => (str || '').toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+        const botToken = "8848765681:AAGcUny1qyNcTrZzBQVG0O3T8kkNgqm3Tek";
+        const chatId = "-1004404503150";
+
+        const itemsText = Array.isArray(orderWithUser.items)
+          ? orderWithUser.items.map((it: any) => `• ${escapeHtml(it.product?.name || 'منتج')} (الكمية: ${it.quantity})`).join('\n')
+          : 'لا تتوفر تفاصيل';
+
+        const telegramMessage = `🛍️ <b>طلب جديد في المتجر!</b>
+----------------------------------
+🆔 <b>رقم الطلب:</b> <code>${escapeHtml(orderWithUser.id)}</code>
+👤 <b>اسم الزبون:</b> ${escapeHtml(orderWithUser.customerName)}
+📞 <b>رقم الهاتف:</b> <code>${escapeHtml(orderWithUser.phone)}</code>
+📍 <b>البلدية والعنوان:</b> ${escapeHtml(orderWithUser.municipality)} - ${escapeHtml(orderWithUser.address)}
+💰 <b>المبلغ الإجمالي:</b> <b>${orderWithUser.total} د.ج</b>
+
+🛒 <b>الطلبات:</b>
+${itemsText}
+${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeHtml(orderWithUser.referrer)}</code>` : ''}
+----------------------------------
+⏰ <b>تاريخ الطلب:</b> ${escapeHtml(new Date().toLocaleString('ar-DZ'))}`;
+
+        console.log("📩 [Telegram Payload Draft]:", telegramMessage);
+
+        // 1. First try server endpoint
+        let serverSuccess = false;
         try {
+          console.log("📡 Attempting notification via Express backend endpoint /api/telegram-notify...");
           const res = await fetch('/api/telegram-notify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(orderPayload)
+            body: JSON.stringify({
+              orderId: orderWithUser.id,
+              orderData: {
+                customerName: orderWithUser.customerName,
+                customerPhone: orderWithUser.phone,
+                commune: orderWithUser.municipality,
+                address: orderWithUser.address,
+                totalPrice: orderWithUser.total,
+                affiliateCode: orderWithUser.referrer,
+                items: orderWithUser.items
+              }
+            })
           });
+
           const data = await res.json().catch(() => null);
-          if (!res.ok || !data?.success) {
-            console.warn('[Telegram Notify] Server endpoint failed or returned error:', data?.error);
-            // Fallback: Try direct call to Telegram API from client side
-            let token = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
-            if (!token || token.includes("AAFdxa6L")) {
-              token = "8848765681:AAGcUny1qyNcTrZzBQVG0O3T8kkNgqm3Tek";
-            }
-            const chatId = import.meta.env.VITE_TELEGRAM_CHAT_ID || "5534070765";
-            const itemsText = Array.isArray(orderWithUser.items)
-              ? orderWithUser.items.map((it: any) => `• ${it.product?.name || 'منتج'} (الكمية: ${it.quantity})`).join('\n')
-              : 'لا تتوفر تفاصيل';
-            
-            const msg = `🛍️ <b>طلب جديد في المتجر!</b>\n----------------------------------\n🆔 <b>رقم الطلب:</b> <code>${orderWithUser.id}</code>\n👤 <b>اسم الزبون:</b> ${orderWithUser.customerName}\n📞 <b>رقم الهاتف:</b> <code>${orderWithUser.phone}</code>\n📍 <b>البلدية:</b> ${orderWithUser.municipality}\n💰 <b>المبلغ:</b> <b>${orderWithUser.total} د.ج</b>\n\n🛒 <b>الطلبات:</b>\n${itemsText}`;
-            
-            await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          console.log("[5] Telegram response (Server API):", { status: res.status, ok: res.ok, data });
+          if (data?.rawText) {
+            console.log("[5] Telegram RAW Response from Server:", data.rawText);
+          }
+
+          if (res.ok && data?.success) {
+            serverSuccess = true;
+            console.log("🎉 ✅ [Telegram Notification Sent via Server API Successfully!]");
+          } else {
+            console.warn("⚠️ Server API endpoint returned non-success or static 404 HTML. Switching to Direct Browser Dispatch...");
+          }
+        } catch (serverErr) {
+          console.warn("⚠️ Express Server endpoint unavailable/unreachable. Switching to Direct Browser Dispatch...", serverErr);
+        }
+
+        // 2. Direct browser dispatch if server endpoint is not active (e.g. deployed static SPA)
+        if (!serverSuccess) {
+          console.log("⚡ Executing Direct Browser Dispatch to Telegram Bot API (https://api.telegram.org)...");
+          try {
+            const directRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' })
-            }).then(r => r.json()).then(d => console.log('[Telegram Direct Fallback Response]:', d)).catch(err => console.error('[Telegram Direct Fallback Error]:', err));
-          } else {
-            console.log('[Telegram Notify] Server sent notification successfully!');
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: telegramMessage,
+                parse_mode: 'HTML'
+              })
+            });
+
+            const directData = await directRes.json();
+            console.log("[5] Telegram response (Direct API):", { status: directRes.status, ok: directRes.ok, directData });
+
+            if (directRes.ok && directData?.ok) {
+              console.log("🎉 ✅ [Telegram Notification Sent via Direct Browser Dispatch Successfully!]");
+            } else {
+              console.error("❌ [Telegram Direct API Error]:", directData?.description);
+            }
+          } catch (directErr) {
+            console.error("[5] Telegram Exception caught in full:", directErr);
           }
-        } catch (e) {
-          console.warn('[Telegram Notify] Fetch failed:', e);
         }
       };
 
-      sendTelegramNotification().catch(err => console.error('Error triggering telegram notification:', err));
+      await sendTelegramNotification().catch(err => console.error("[5] Telegram Exception caught in full:", err));
+      console.log("[6] End of order flow");
 
       showToast(`تم تسجيل طلبيتك برقم ${newOrder.id} بنجاح!`, 'success');
     } catch (err) {
-      console.error("[Firestore Order Save] CRITICAL EXCEPTION CAUGHT during direct Firestore write:", err);
+      console.error("❌ [Firestore Order Save] CRITICAL EXCEPTION CAUGHT during direct Firestore write:", err);
       showToast(`عذرًا، حدث خطأ أثناء تسجيل طلبك. يرجى المحاولة مرة أخرى.`, 'info');
     }
   };
