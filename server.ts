@@ -43,7 +43,10 @@ async function startServer() {
   app.post("/api/telegram-notify", async (req, res) => {
     try {
       const { orderId, orderData } = req.body;
-      const botToken = process.env.TELEGRAM_BOT_TOKEN || "8848765681:AAFdxa6L-gdGvvYmZb1VmeGOEG8WS29lU";
+      let botToken = process.env.TELEGRAM_BOT_TOKEN;
+      if (!botToken || botToken.includes("AAFdxa6L")) {
+        botToken = "8848765681:AAGcUny1qyNcTrZzBQVG0O3T8kkNgqm3Tek";
+      }
       const chatId = process.env.TELEGRAM_CHAT_ID || "5534070765";
 
       if (!botToken) {
@@ -55,27 +58,29 @@ async function startServer() {
         return res.status(400).json({ success: false, error: "Order data missing" });
       }
 
+      const escapeHtml = (str: string) => (str || '').toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
       const itemsList = Array.isArray(orderData.items)
-        ? orderData.items.map((it: any) => `• ${it.product?.name || 'منتج'} (الكمية: ${it.quantity})`).join("\n")
+        ? orderData.items.map((it: any) => `• ${escapeHtml(it.product?.name || 'منتج')} (الكمية: ${it.quantity})`).join("\n")
         : "لا تتوفر تفاصيل المنتجات";
 
       const deliveryText = orderData.deliveryType === 'home' ? 'توصيل للمنزل' : 'استلام من المكتب';
 
-      const message = `🛍️ *طلب جديد في المتجر!*
+      const message = `🛍️ <b>طلب جديد في المتجر!</b>
 ----------------------------------
-🆔 *رقم الطلب:* \`${orderId || "جديد"}\`
-👤 *اسم الزبون:* ${orderData.customerName || "غير محدد"}
-📞 *رقم الهاتف:* \`${orderData.customerPhone || "غير محدد"}\`
-📍 *البلدية والعنوان:* ${orderData.commune || "غير محدد"} - ${orderData.address || ""}
-💰 *المبلغ الإجمالي:* *${orderData.totalPrice || 0} د.ج*
-🚚 *طريقة التوصيل:* ${deliveryText}
+🆔 <b>رقم الطلب:</b> <code>${escapeHtml(orderId || "جديد")}</code>
+👤 <b>اسم الزبون:</b> ${escapeHtml(orderData.customerName || "غير محدد")}
+📞 <b>رقم الهاتف:</b> <code>${escapeHtml(orderData.customerPhone || "غير محدد")}</code>
+📍 <b>البلدية والعنوان:</b> ${escapeHtml(orderData.commune || "غير محدد")} - ${escapeHtml(orderData.address || "")}
+💰 <b>المبلغ الإجمالي:</b> <b>${orderData.totalPrice || 0} د.ج</b>
+🚚 <b>طريقة التوصيل:</b> ${escapeHtml(deliveryText)}
 
-🛒 *الطلبات:*
+🛒 <b>الطلبات:</b>
 ${itemsList}
 
-${orderData.affiliateCode ? `👥 *رمز المسوّق:* \`${orderData.affiliateCode}\`` : ''}
+${orderData.affiliateCode ? `👥 <b>رمز المسوّق:</b> <code>${escapeHtml(orderData.affiliateCode)}</code>` : ''}
 ----------------------------------
-⏰ *تاريخ الطلب:* ${new Date().toLocaleString('ar-DZ')}`;
+⏰ <b>تاريخ الطلب:</b> ${escapeHtml(new Date().toLocaleString('ar-DZ'))}`;
 
       const telegramRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
@@ -83,14 +88,15 @@ ${orderData.affiliateCode ? `👥 *رمز المسوّق:* \`${orderData.affilia
         body: JSON.stringify({
           chat_id: chatId,
           text: message,
-          parse_mode: "Markdown"
+          parse_mode: "HTML"
         })
       });
 
-      if (!telegramRes.ok) {
-        const errText = await telegramRes.text();
-        console.error("Telegram API error:", errText);
-        return res.status(500).json({ success: false, error: errText });
+      const responseData = await telegramRes.json().catch(() => null);
+
+      if (!telegramRes.ok || !responseData?.ok) {
+        console.error("Telegram API error response:", responseData);
+        return res.status(500).json({ success: false, error: responseData?.description || "Telegram API failure" });
       }
 
       return res.json({ success: true });

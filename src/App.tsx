@@ -749,11 +749,9 @@ export default function App() {
       await saveDocument('orders', orderWithUser.id, orderWithUser);
       console.log("[Firestore Order Save] Order successfully saved to Firestore!");
 
-      // Send real-time notification to Telegram via server API
-      fetch('/api/telegram-notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      // Send real-time notification to Telegram via server API with client fallback
+      const sendTelegramNotification = async () => {
+        const orderPayload = {
           orderId: orderWithUser.id,
           orderData: {
             customerName: orderWithUser.customerName,
@@ -765,8 +763,43 @@ export default function App() {
             affiliateCode: orderWithUser.referrer,
             items: orderWithUser.items
           }
-        })
-      }).catch(e => console.warn('Telegram notification proxy call failed:', e));
+        };
+
+        try {
+          const res = await fetch('/api/telegram-notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderPayload)
+          });
+          const data = await res.json().catch(() => null);
+          if (!res.ok || !data?.success) {
+            console.warn('[Telegram Notify] Server endpoint failed or returned error:', data?.error);
+            // Fallback: Try direct call to Telegram API from client side
+            let token = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
+            if (!token || token.includes("AAFdxa6L")) {
+              token = "8848765681:AAGcUny1qyNcTrZzBQVG0O3T8kkNgqm3Tek";
+            }
+            const chatId = import.meta.env.VITE_TELEGRAM_CHAT_ID || "5534070765";
+            const itemsText = Array.isArray(orderWithUser.items)
+              ? orderWithUser.items.map((it: any) => `• ${it.product?.name || 'منتج'} (الكمية: ${it.quantity})`).join('\n')
+              : 'لا تتوفر تفاصيل';
+            
+            const msg = `🛍️ <b>طلب جديد في المتجر!</b>\n----------------------------------\n🆔 <b>رقم الطلب:</b> <code>${orderWithUser.id}</code>\n👤 <b>اسم الزبون:</b> ${orderWithUser.customerName}\n📞 <b>رقم الهاتف:</b> <code>${orderWithUser.phone}</code>\n📍 <b>البلدية:</b> ${orderWithUser.municipality}\n💰 <b>المبلغ:</b> <b>${orderWithUser.total} د.ج</b>\n\n🛒 <b>الطلبات:</b>\n${itemsText}`;
+            
+            await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' })
+            }).then(r => r.json()).then(d => console.log('[Telegram Direct Fallback Response]:', d)).catch(err => console.error('[Telegram Direct Fallback Error]:', err));
+          } else {
+            console.log('[Telegram Notify] Server sent notification successfully!');
+          }
+        } catch (e) {
+          console.warn('[Telegram Notify] Fetch failed:', e);
+        }
+      };
+
+      sendTelegramNotification().catch(err => console.error('Error triggering telegram notification:', err));
 
       showToast(`تم تسجيل طلبيتك برقم ${newOrder.id} بنجاح!`, 'success');
     } catch (err) {
@@ -896,10 +929,6 @@ export default function App() {
       a: 'نوفر خدمة التوصيل السريع لجميع بلديات الولاية الـ 11: توقرت وسط المدينة، تماسين، النزلة، تبسبست، الطيبات، الهجيرة، العالية، المنقر، سيدي سليمان، بن ناصر، وبلدة عمر.'
     },
     {
-      q: 'كم تبلغ تكلفة التوصيل؟ وهل هناك توصيل مجاني؟',
-      a: 'التوصيل مجاني بالكامل 100% لكافة بلديات ولاية توقرت الـ 11 بدون أي تكاليف إضافية ومهما كانت قيمة طلبيتك!'
-    },
-    {
       q: 'هل الأدوات والآلات الحاسبة أصلية وتوافق متطلبات المدارس والأساتذة؟',
       a: 'نعم، جميع سلعنا أصلية من كبرى العلامات المعتمدة مثل CASIO، Maped، Stabilo، Techno و Faber-Castell. كما أننا نضمن تطابق الآلات الحاسبة والدفاتر مع المناهج والمقررات التربوية الرسمية لوزارة التربية الوطنية بالجزائر.'
     },
@@ -962,7 +991,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col justify-between overflow-x-clip selection:bg-brand-blue selection:text-white">
+    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans flex flex-col justify-between overflow-x-clip selection:bg-brand-blue selection:text-white">
       
       {/* Dynamic Top Cart Bar */}
       <AnimatePresence>
