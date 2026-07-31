@@ -40,6 +40,8 @@ import {
 } from 'lucide-react';
 import { Product, Category, Municipality, Order, User, Review, SiteSettings, Affiliate } from '../types';
 import { convertGoogleDriveUrl, getCompatibleImageUrl } from '../utils/imageHelper';
+import { ImageUploaderWithCompression } from './ImageUploaderWithCompression';
+import { FirebaseStorageCard } from './FirebaseStorageCard';
 import { updateOrderStatusAtomic } from '../lib/firebase';
 import {
   ResponsiveContainer,
@@ -1360,6 +1362,20 @@ export default function AdminDashboard({
                 </div>
               </div>
 
+              {/* Firebase Database Live Usage Card */}
+              <FirebaseStorageCard
+                products={products}
+                categories={categories}
+                municipalities={municipalities}
+                orders={orders}
+                users={users}
+                reviews={reviews}
+                siteSettings={siteSettings}
+                visitorsCount={visitorsCount}
+                packs={packs}
+                affiliates={affiliates}
+              />
+
               {/* Order Status Breakdown Boxes */}
               <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6">
                 <h4 className="text-sm font-black mb-4">حالة الطلبات الحالية بالمخزن</h4>
@@ -1764,58 +1780,12 @@ export default function AdminDashboard({
                       </select>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-400">صورة المنتج (رابط أو رفع ملف من عندك)</label>
-                      <div className="space-y-2">
-                        <input
-                          type="url"
-                          value={prodImage && !prodImage.startsWith('data:') ? prodImage : ''}
-                          onChange={(e) => setProdImage(convertGoogleDriveUrl(e.target.value))}
-                          className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-mono focus:outline-none focus:border-brand-blue text-left text-slate-200"
-                          placeholder="أدخل رابط الصورة (URL) أو ارفع ملفاً بالأسفل..."
-                        />
-                        <div className="flex items-center gap-2">
-                          <label className="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-brand-blue text-slate-200 py-2 px-3 rounded-xl text-xs font-bold cursor-pointer text-center transition-all flex items-center justify-center gap-1.5 select-none">
-                            <Upload className="h-4 w-4 text-slate-400 shrink-0" />
-                            <span>رفع صورة من جهازك 📁</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  const reader = new FileReader();
-                                  reader.onloadend = () => {
-                                    if (typeof reader.result === 'string') {
-                                      setProdImage(reader.result);
-                                      triggerNoti('تم تحميل الصورة المحلية بنجاح!', 'success');
-                                    }
-                                  };
-                                  reader.readAsDataURL(file);
-                                }
-                              }}
-                            />
-                          </label>
-                          {prodImage && (
-                            <div className="relative shrink-0 h-10 w-10 border border-slate-800 rounded-xl overflow-hidden bg-slate-900">
-                              <img src={getCompatibleImageUrl(prodImage)} alt="Preview" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setProdImage('');
-                                  triggerNoti('تم إزالة الصورة');
-                                }}
-                                className="absolute inset-0 bg-red-600/80 hover:bg-red-700 text-white flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
-                                title="إزالة الصورة"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    <ImageUploaderWithCompression
+                      imageUrl={prodImage}
+                      onImageChange={(url) => setProdImage(url)}
+                      label="صورة المنتج (رابط أو رفع ملف من عندك مع الضغط التلقائي)"
+                      triggerNotification={triggerNoti}
+                    />
                   </div>
 
 
@@ -1956,7 +1926,7 @@ export default function AdminDashboard({
                 )}
               </div>
 
-              {isAddingCategory && (
+               {isAddingCategory && (
                 <form onSubmit={handleCategorySave} className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 animate-in slide-in-from-top duration-300">
                   <h4 className="text-sm font-black text-white">إضافة تصنيف مدرسي جديد</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1972,23 +1942,12 @@ export default function AdminDashboard({
                       />
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-400">رابط صورة المعاينة (رابط Drive أو عادي)</label>
-                      <div className="flex gap-3 items-center">
-                        <input
-                          type="url"
-                          value={catImage}
-                          onChange={(e) => setCatImage(convertGoogleDriveUrl(e.target.value))}
-                          className="flex-1 bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-mono text-left text-slate-200 focus:outline-none focus:border-brand-blue"
-                          placeholder="أدخل رابط صورة التصنيف (مثال: رابط Google Drive)..."
-                        />
-                        {catImage && (
-                          <div className="h-10 w-10 rounded-xl overflow-hidden border border-slate-800 bg-slate-900 shrink-0">
-                            <img src={getCompatibleImageUrl(catImage)} alt="Category Preview" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <ImageUploaderWithCompression
+                      imageUrl={catImage}
+                      onImageChange={(url) => setCatImage(url)}
+                      label="صورة المعاينة للتصنيف (رابط أو رفع ملف وضغطه)"
+                      triggerNotification={triggerNoti}
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -2048,23 +2007,12 @@ export default function AdminDashboard({
                       />
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-bold text-slate-400">رابط صورة المعاينة (رابط Drive أو عادي)</label>
-                      <div className="flex gap-3 items-center">
-                        <input
-                          type="url"
-                          value={catImage}
-                          onChange={(e) => setCatImage(convertGoogleDriveUrl(e.target.value))}
-                          className="flex-1 bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-mono text-left text-slate-200 focus:outline-none focus:border-brand-blue"
-                          placeholder="أدخل رابط صورة التصنيف (مثال: رابط Google Drive)..."
-                        />
-                        {catImage && (
-                          <div className="h-10 w-10 rounded-xl overflow-hidden border border-slate-800 bg-slate-900 shrink-0">
-                            <img src={getCompatibleImageUrl(catImage)} alt="Category Preview" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    <ImageUploaderWithCompression
+                      imageUrl={catImage}
+                      onImageChange={(url) => setCatImage(url)}
+                      label="صورة المعاينة للتصنيف (رابط أو رفع ملف وضغطه)"
+                      triggerNotification={triggerNoti}
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -2395,23 +2343,13 @@ export default function AdminDashboard({
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-400">رابط شعار الموقع (Logo URL)</label>
-                  <div className="flex gap-3 items-center">
-                    <input
-                      type="url"
-                      placeholder="رابط الشعار (اترك فارغاً للمحافظة على الشعار الافتراضي)..."
-                      value={setLogoUrl}
-                      onChange={(e) => setSetLogoUrl(convertGoogleDriveUrl(e.target.value))}
-                      className="flex-1 bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-mono text-left text-white focus:outline-none focus:border-brand-blue"
-                    />
-                    {setLogoUrl && (
-                      <div className="h-10 w-10 rounded-xl overflow-hidden border border-slate-800 bg-slate-900 shrink-0">
-                        <img src={getCompatibleImageUrl(setLogoUrl)} alt="Logo Preview" className="h-full w-full object-contain p-1" referrerPolicy="no-referrer" />
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <ImageUploaderWithCompression
+                  imageUrl={setLogoUrl}
+                  onImageChange={(url) => setSetLogoUrl(url)}
+                  label="شعار الموقع (Logo)"
+                  placeholder="رابط الشعار أو ارفع ملفاً من جهازك..."
+                  triggerNotification={triggerNoti}
+                />
 
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-400">حد التوصيل المجاني بالدينار (د.ج)</label>
@@ -2540,15 +2478,13 @@ export default function AdminDashboard({
                     </button>
                   </div>
 
-                  {/* Image Link Input - Full Width across the entire container */}
                   <div className="w-full">
-                    <input
-                      type="url"
-                      required
+                    <ImageUploaderWithCompression
+                      imageUrl={packImage}
+                      onImageChange={(url) => setPackImage(url)}
+                      label="صورة الباك المدرسي (رابط أو رفع صورة وتصغير حجمها)"
                       placeholder="رابط صورة الباك المدرسي (مثال: https://example.com/image.jpg)"
-                      value={packImage}
-                      onChange={(e) => setPackImage(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-4 text-xs font-bold text-white text-right placeholder-slate-600 focus:border-brand-blue focus:outline-none"
+                      triggerNotification={triggerNoti}
                     />
                   </div>
 
