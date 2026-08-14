@@ -14,7 +14,7 @@ import {
   Home
 } from 'lucide-react';
 import { CartItem, User, SiteSettings } from '../types';
-import midadLogo from '../assets/images/midad_logo.png';
+import midadLogo from '../assets/images/midad-logo.png';
 import { getCompatibleImageUrl } from '../utils/imageHelper';
 
 interface HeaderProps {
