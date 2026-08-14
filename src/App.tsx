@@ -47,7 +47,7 @@ import UserProfileView from './components/UserProfileView';
 import AdminDashboard from './components/AdminDashboard';
 import { getCompatibleImageUrl } from './utils/imageHelper';
 import { saveDoc, getDocData, subscribeDoc, saveDocument, updateOrderStatusAtomic, initializeCollectionsIfEmpty, incrementVisitors, subscribeCollection } from './lib/firebase';
-import midadLogo from './assets/images/midad_logo.png';
+import midadLogo from './assets/images/midad-logo.png';
 
 
 export default function App() {
