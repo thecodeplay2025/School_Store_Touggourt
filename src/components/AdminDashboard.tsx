@@ -27,6 +27,7 @@ import {
   AlertTriangle,
   Heart,
   DollarSign,
+  Wallet,
   Smartphone,
   Sparkles,
   RefreshCw,
@@ -40,6 +41,7 @@ import {
 } from 'lucide-react';
 import { Product, Category, Municipality, Order, User, Review, SiteSettings, Affiliate } from '../types';
 import { convertGoogleDriveUrl, getCompatibleImageUrl } from '../utils/imageHelper';
+import { getProductStock, getStockStatusInfo, isProductAvailable } from '../utils/stockHelper';
 import { ImageUploaderWithCompression } from './ImageUploaderWithCompression';
 import { FirebaseStorageCard } from './FirebaseStorageCard';
 import { updateOrderStatusAtomic } from '../lib/firebase';
@@ -124,7 +126,7 @@ export default function AdminDashboard({
   // Custom Delete Confirmation Modal State
   const [deleteConfirm, setDeleteConfirm] = useState<{
     id: string;
-    type: 'product' | 'order' | 'pack' | 'visitors_reset' | 'category' | 'affiliate';
+    type: 'product' | 'order' | 'pack' | 'visitors_reset' | 'category' | 'affiliate' | 'all_orders';
     title: string;
     message: string;
   } | null>(null);
@@ -601,7 +603,7 @@ export default function AdminDashboard({
 
     products.forEach(p => {
       const purchasePrice = p.purchasePrice !== undefined ? p.purchasePrice : Math.round(p.price * 0.8);
-      const quantity = p.stockQuantity !== undefined ? p.stockQuantity : 10;
+      const quantity = getProductStock(p);
       
       totalPurchaseCost += purchasePrice * quantity;
       totalPotentialRevenue += p.price * quantity;
@@ -646,6 +648,8 @@ export default function AdminDashboard({
   };
 
   // Add/Edit Product Save
+  const [stockFilterTab, setStockFilterTab] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>('all');
+
   const handleProductSave = (e: React.FormEvent) => {
     e.preventDefault();
     const featuresList = prodFeatures.split(',').map(f => f.trim()).filter(Boolean);
@@ -654,6 +658,8 @@ export default function AdminDashboard({
 
     const parsedPrice = parseFloat(String(prodPrice).replace(',', '.')) || 0;
     const parsedPurchasePrice = parseFloat(String(prodPurchasePrice).replace(',', '.')) || 0;
+    const numericStock = Math.max(0, Math.floor(Number(prodStockQuantity) || 0));
+    const computedInStock = prodInStock && numericStock > 0;
 
     if (editingProduct) {
       // Edit
@@ -663,17 +669,18 @@ export default function AdminDashboard({
         description: prodDesc,
         price: parsedPrice,
         purchasePrice: parsedPurchasePrice,
-        stockQuantity: prodStockQuantity,
+        stock: numericStock,
+        stockQuantity: numericStock,
         image: finalImage,
         category: prodCategory,
         brand: prodBrand,
         features: featuresList,
-        inStock: prodInStock,
+        inStock: computedInStock,
         isPopular: prodIsPopular
       } : p);
       onUpdateProducts(updated);
       setEditingProduct(null);
-      triggerNoti('تم تعديل بيانات المنتج بنجاح');
+      triggerNoti('تم تعديل بيانات ومخزون المنتج بنجاح');
     } else {
       // Create new
       const newProd: Product = {
@@ -682,18 +689,19 @@ export default function AdminDashboard({
         description: prodDesc,
         price: parsedPrice,
         purchasePrice: parsedPurchasePrice,
-        stockQuantity: prodStockQuantity,
+        stock: numericStock,
+        stockQuantity: numericStock,
         image: finalImage,
         category: prodCategory || categories[0]?.id || 'bags',
         rating: 5.0,
         brand: prodBrand || 'مدرستنا',
         features: featuresList.length ? featuresList : ['مستلزم عالي الجودة لولاية توقرت'],
-        inStock: prodInStock,
+        inStock: computedInStock,
         isPopular: prodIsPopular
       };
       onUpdateProducts([newProd, ...products]);
       setIsAddingProduct(false);
-      triggerNoti('تمت إضافة المنتج الجديد وعرضه في المعرض!');
+      triggerNoti('تمت إضافة المنتج الجديد وتحديث المخزون بنجاح!');
     }
     // Reset Form
     clearProductForm();
@@ -720,20 +728,42 @@ export default function AdminDashboard({
     setProdDesc(p.description);
     setProdPrice(p.price.toString());
     setProdPurchasePrice(p.purchasePrice !== undefined ? p.purchasePrice.toString() : Math.round(p.price * 0.8).toString());
-    setProdStockQuantity(p.stockQuantity !== undefined ? p.stockQuantity : 10);
+    setProdStockQuantity(getProductStock(p));
     setProdImage(p.image);
     setProdCategory(p.category);
     setProdBrand(p.brand || '');
     setProdFeatures(p.features.join(', '));
-    setProdInStock(p.inStock);
+    setProdInStock(p.inStock && getProductStock(p) > 0);
     setProdIsPopular(p.isPopular);
   };
 
-  // Toggle Stock directly
-  const handleToggleStock = (p: Product) => {
-    const updated = products.map(item => item.id === p.id ? { ...item, inStock: !item.inStock } : item);
+  // Adjust Product Stock directly (+/- delta)
+  const handleAdjustProductStock = (p: Product, delta: number) => {
+    const currentStock = getProductStock(p);
+    const newStock = Math.max(0, currentStock + delta);
+    const inStock = newStock > 0;
+    const updated = products.map(item => item.id === p.id ? {
+      ...item,
+      stock: newStock,
+      stockQuantity: newStock,
+      inStock: inStock
+    } : item);
     onUpdateProducts(updated);
-    triggerNoti(`تم تغيير حالة المخزون للمنتج: ${p.name}`);
+  };
+
+  // Toggle Stock status directly
+  const handleToggleStock = (p: Product) => {
+    const currentStock = getProductStock(p);
+    const nextInStock = !p.inStock;
+    const nextStock = nextInStock ? (currentStock > 0 ? currentStock : 10) : 0;
+    const updated = products.map(item => item.id === p.id ? { 
+      ...item, 
+      inStock: nextInStock,
+      stock: nextStock,
+      stockQuantity: nextStock
+    } : item);
+    onUpdateProducts(updated);
+    triggerNoti(`تم تغيير حالة توفر المنتج: ${p.name}`);
   };
 
   // Order status update
@@ -819,6 +849,20 @@ export default function AdminDashboard({
     });
   };
 
+  // Delete All Orders
+  const handleDeleteAllOrders = () => {
+    if (orders.length === 0) {
+      triggerNoti('لا توجد أي طلبيات لحذفها حالياً');
+      return;
+    }
+    setDeleteConfirm({
+      id: 'all_orders',
+      type: 'all_orders',
+      title: 'حذف جميع الطلبيات نهائياً 🗑️',
+      message: `تحذير: هل أنت متأكد تماماً من رغبتك في حذف جميع الطلبيات (${orders.length} طلبية) نهائياً من قاعدة البيانات والمتجر؟ هذا الإجراء سيقوم بمسح كافة سجلات الطلبيات بالكامل ولا يمكن التراجع عنه.`
+    });
+  };
+
   // Execute actual deletion from state (replacing native blocking confirm dialogs)
   const handleExecuteDelete = () => {
     if (!deleteConfirm) return;
@@ -834,6 +878,10 @@ export default function AdminDashboard({
       if (selectedOrder?.id === id) {
         setSelectedOrder(null);
       }
+    } else if (type === 'all_orders') {
+      onUpdateOrders([]);
+      setSelectedOrder(null);
+      triggerNoti('تم حذف جميع الطلبيات نهائياً بنجاح');
     } else if (type === 'pack') {
       const updated = packs.filter(p => p.id !== id);
       onUpdatePacks(updated);
@@ -1100,12 +1148,34 @@ export default function AdminDashboard({
     triggerNoti(`تم تحديث تقييم المنتج وتعديل عرضه`);
   };
 
-  // Filter lists based on search
-  const filteredProductsList = products.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.brand?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    p.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Stock statistics
+  const stockStats = useMemo(() => {
+    const total = products.length;
+    const inStock = products.filter(p => isProductAvailable(p) && getProductStock(p) > 5).length;
+    const lowStock = products.filter(p => isProductAvailable(p) && getProductStock(p) >= 1 && getProductStock(p) <= 5).length;
+    const outOfStock = products.filter(p => !isProductAvailable(p) || getProductStock(p) <= 0).length;
+    return { total, inStock, lowStock, outOfStock };
+  }, [products]);
+
+  // Filter lists based on search & stock filter
+  const filteredProductsList = useMemo(() => {
+    return products.filter(p => {
+      const matchesSearch = 
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        p.brand?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        p.category.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      if (!matchesSearch) return false;
+
+      const stock = getProductStock(p);
+      const available = isProductAvailable(p);
+
+      if (stockFilterTab === 'in_stock') return available && stock > 5;
+      if (stockFilterTab === 'low_stock') return available && stock >= 1 && stock <= 5;
+      if (stockFilterTab === 'out_of_stock') return !available || stock <= 0;
+      return true;
+    });
+  }, [products, searchTerm, stockFilterTab]);
 
   const filteredOrdersList = orders.filter(o => 
     o.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -1667,11 +1737,11 @@ export default function AdminDashboard({
 
           {/* Tab 2: PRODUCT MANAGEMENT */}
           {activeTab === 'products' && (
-            <div className="space-y-6 text-right">
+            <div className="space-y-6 text-right" dir="rtl">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-base sm:text-lg font-black text-white">إدارة مخزون وسلع المتجر</h3>
-                  <p className="text-xs text-slate-400 mt-1 font-bold">إضافة وتعديل وحذف المنتجات في معرض متجر توقرت</p>
+                  <p className="text-xs text-slate-400 mt-1 font-bold">متابعة الكميات، ضبط المخزون، وإضافة وتعديل المنتجات مع التزامن السحابي المباشر في Firestore</p>
                 </div>
                 {!isAddingProduct && (
                   <button
@@ -1684,11 +1754,64 @@ export default function AdminDashboard({
                 )}
               </div>
 
+              {/* Financial & Stock Overview Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div 
+                  className="p-4 rounded-2xl border bg-slate-950/80 border-slate-800 transition-all"
+                >
+                  <div className="flex items-center justify-between text-xs text-slate-400 font-bold mb-1">
+                    <span>إجمالي السلع</span>
+                    <Package className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <div className="text-xl sm:text-2xl font-black text-white font-mono">{products.length}</div>
+                  <div className="text-[10px] text-slate-400 mt-1 font-semibold">كل المنتجات المسجلة بالمتجر</div>
+                </div>
+
+                <div 
+                  className="p-4 rounded-2xl border bg-slate-950/80 border-slate-800 transition-all"
+                >
+                  <div className="flex items-center justify-between text-xs text-emerald-400 font-bold mb-1">
+                    <span>إجمالي إيرادات المتجر</span>
+                    <span className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                      <DollarSign className="h-4 w-4" />
+                    </span>
+                  </div>
+                  <div className="text-xl sm:text-2xl font-black text-emerald-400 font-mono">{formatPrice(totalRevenue)}</div>
+                  <div className="text-[10px] text-slate-400 mt-1 font-semibold">من الطلبيات المستلمة والمسلمة</div>
+                </div>
+
+                <div 
+                  className="p-4 rounded-2xl border bg-slate-950/80 border-slate-800 transition-all"
+                >
+                  <div className="flex items-center justify-between text-xs text-teal-400 font-bold mb-1">
+                    <span>صافي الأرباح المحصلة</span>
+                    <span className="p-1.5 bg-teal-500/10 text-teal-400 rounded-lg">
+                      <TrendingUp className="h-4 w-4" />
+                    </span>
+                  </div>
+                  <div className="text-xl sm:text-2xl font-black text-teal-400 font-mono">{formatPrice(totalProfit)}</div>
+                  <div className="text-[10px] text-slate-400 mt-1 font-semibold">الأرباح الصافية بعد خصم التكاليف</div>
+                </div>
+
+                <div 
+                  className="p-4 rounded-2xl border bg-slate-950/80 border-slate-800 transition-all"
+                >
+                  <div className="flex items-center justify-between text-xs text-amber-400 font-bold mb-1">
+                    <span>رأس المال</span>
+                    <span className="p-1.5 bg-amber-500/10 text-amber-400 rounded-lg">
+                      <Wallet className="h-4 w-4" />
+                    </span>
+                  </div>
+                  <div className="text-xl sm:text-2xl font-black text-amber-400 font-mono">{formatPrice(inventoryStats.totalPurchaseCost)}</div>
+                  <div className="text-[10px] text-slate-400 mt-1 font-semibold">قيمة بضاعة المخزون الحالية</div>
+                </div>
+              </div>
+
               {/* Add/Edit Product Panel */}
               {isAddingProduct && (
                 <form onSubmit={handleProductSave} className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-4 animate-in slide-in-from-top duration-300">
                   <h4 className="text-sm font-black text-white pb-3 border-b border-slate-800 flex items-center gap-1.5">
-                    <span>{editingProduct ? 'تعديل بيانات منتج' : 'إضافة منتج مدرسي جديد'}</span>
+                    <span>{editingProduct ? 'تعديل بيانات ومخزون المنتج' : 'إضافة منتج مدرسي جديد'}</span>
                   </h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1767,6 +1890,92 @@ export default function AdminDashboard({
                       })()}
                     </div>
 
+                    {/* Stock Input Section with Counter & Quick increments */}
+                    <div className="space-y-2 bg-slate-900/80 border border-slate-800 p-4 rounded-2xl sm:col-span-2">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-slate-300">الكمية الحالية في المخزون (Stock)</label>
+                        {/* Live Stock Status Indicator */}
+                        {(() => {
+                          const qty = Number(prodStockQuantity) || 0;
+                          if (qty > 5) {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                متوفر في المخزن
+                              </span>
+                            );
+                          } else if (qty >= 1) {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                                <AlertTriangle className="h-3 w-3 text-amber-400" />
+                                مخزون منخفض ({qty} قطع متبقية)
+                              </span>
+                            );
+                          } else {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                                <span className="h-1.5 w-1.5 rounded-full bg-rose-400"></span>
+                                نفد المخزون (0 قطع)
+                              </span>
+                            );
+                          }
+                        })()}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setProdStockQuantity(prev => Math.max(0, (Number(prev) || 0) - 1))}
+                            className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                            title="إنقاص قطعة واحدة"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <input
+                            type="number"
+                            min="0"
+                            required
+                            value={prodStockQuantity}
+                            onChange={(e) => setProdStockQuantity(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                            className="w-24 bg-transparent py-2 text-center text-sm font-black font-mono text-white focus:outline-none"
+                            placeholder="10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setProdStockQuantity(prev => (Number(prev) || 0) + 1)}
+                            className="p-2.5 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                            title="إضافة قطعة واحدة"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        {/* Quick stock shortcuts */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] text-slate-500 font-semibold ml-1">إضافة سريعة:</span>
+                          {[5, 10, 25, 50].map(addVal => (
+                            <button
+                              key={addVal}
+                              type="button"
+                              onClick={() => setProdStockQuantity(prev => (Number(prev) || 0) + addVal)}
+                              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-bold transition-colors"
+                            >
+                              +{addVal}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => setProdStockQuantity(0)}
+                            className="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 rounded-lg text-xs font-bold transition-colors"
+                            title="تصفير المخزون"
+                          >
+                            تصفير
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="space-y-1.5">
                       <label className="block text-xs font-bold text-slate-400">التصنيف</label>
                       <select
@@ -1788,7 +1997,6 @@ export default function AdminDashboard({
                     />
                   </div>
 
-
                   <div className="flex items-center gap-6 pt-2">
                     <label className="flex items-center gap-2 text-xs font-bold text-slate-300 cursor-pointer">
                       <input
@@ -1797,14 +2005,14 @@ export default function AdminDashboard({
                         onChange={(e) => setProdInStock(e.target.checked)}
                         className="rounded border-slate-800 bg-slate-900 text-brand-blue focus:ring-0 h-4 w-4"
                       />
-                      <span>متوفر في المخزن حالياً</span>
+                      <span>متوفر للبيع في المتجر (يُحجب تلقائياً إذا كان المخزون 0)</span>
                     </label>
                   </div>
 
                   <div className="flex gap-2.5 pt-4">
                     <button
                       type="submit"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl text-xs font-black transition-all"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl text-xs font-black transition-all shadow-md"
                     >
                       <span>حفظ وإدراج في المعرض</span>
                     </button>
@@ -1821,15 +2029,22 @@ export default function AdminDashboard({
 
               {/* Products Table */}
               <div className="bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden">
-                <div className="p-4 border-b border-slate-800 flex items-center justify-between gap-4">
-                  <h4 className="text-xs font-bold">قائمة المعروضات ({filteredProductsList.length} منتج)</h4>
+                <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <h4 className="text-xs font-bold text-white">قائمة المعروضات ({filteredProductsList.length} منتج)</h4>
+                    {stockFilterTab !== 'all' && (
+                      <span className="text-[10px] bg-brand-blue/20 text-brand-blue px-2 py-0.5 rounded-full font-bold">
+                        فلتر المخزون مفعّل
+                      </span>
+                    )}
+                  </div>
                   <div className="relative max-w-xs w-full">
                     <input
                       type="text"
-                      placeholder="البحث بالاسم..."
+                      placeholder="البحث بالاسم أو الماركة..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-800 rounded-xl py-1.5 pr-9 pl-3 text-xs text-white"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl py-1.5 pr-9 pl-3 text-xs text-white placeholder-slate-500"
                     />
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
                   </div>
@@ -1843,57 +2058,112 @@ export default function AdminDashboard({
                         <th className="p-4">التصنيف</th>
                         <th className="p-4">سعر الشراء</th>
                         <th className="p-4">سعر البيع</th>
-                        <th className="p-4">حالة المخزن</th>
+                        <th className="p-4 text-center">الكمية في المخزن</th>
+                        <th className="p-4 text-center">حالة المخزون</th>
                         <th className="p-4 text-center">عمليات</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
-                      {filteredProductsList.map((p) => {
-                        const purchasePrice = p.purchasePrice !== undefined ? p.purchasePrice : Math.round(p.price * 0.8);
-                        
-                        return (
-                          <tr key={p.id} className="hover:bg-slate-900/50 transition-colors">
-                            <td className="p-4 flex items-center gap-3">
-                              <img src={getCompatibleImageUrl(p.image)} alt={p.name} className="h-10 w-10 rounded-lg object-cover border border-slate-800 shrink-0" referrerPolicy="no-referrer" />
-                              <span className="font-extrabold truncate max-w-xs">{p.name}</span>
-                            </td>
-                            <td className="p-4 text-slate-300">{p.category}</td>
-                            <td className="p-4 font-mono text-slate-400">{formatPrice(purchasePrice)}</td>
-                            <td className="p-4 font-mono font-black text-brand-blue">{formatPrice(p.price)}</td>
-                            <td className="p-4">
-                              <button
-                                type="button"
-                                onClick={() => handleToggleStock(p)}
-                                className={`px-2.5 py-1 rounded-full text-[10px] font-black border ${
-                                  p.inStock 
-                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                                    : 'bg-red-500/10 text-red-400 border-red-500/20'
-                                }`}
-                              >
-                                {p.inStock ? 'متوفر' : 'غير متوفر'}
-                              </button>
-                            </td>
-                            <td className="p-4 text-center space-x-1 space-x-reverse">
-                              <button
-                                type="button"
-                                onClick={() => startEditProduct(p)}
-                                className="p-1.5 bg-slate-800 hover:bg-brand-blue hover:text-white rounded-lg transition-colors text-slate-300"
-                                title="تعديل"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteProduct(p.id)}
-                                className="p-1.5 bg-slate-800 hover:bg-rose-600 hover:text-white rounded-lg transition-colors text-rose-400"
-                                title="حذف"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {filteredProductsList.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-slate-500">
+                            لا توجد منتجات تطابق الفلتر الحالي.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredProductsList.map((p) => {
+                          const purchasePrice = p.purchasePrice !== undefined ? p.purchasePrice : Math.round(p.price * 0.8);
+                          const stock = getProductStock(p);
+                          const statusInfo = getStockStatusInfo(p);
+                          
+                          return (
+                            <tr key={p.id} className="hover:bg-slate-900/50 transition-colors">
+                              <td className="p-4 flex items-center gap-3">
+                                <img src={getCompatibleImageUrl(p.image)} alt={p.name} className="h-10 w-10 rounded-lg object-cover border border-slate-800 shrink-0" referrerPolicy="no-referrer" />
+                                <span className="font-extrabold truncate max-w-xs text-white">{p.name}</span>
+                              </td>
+                              <td className="p-4 text-slate-300">{p.category}</td>
+                              <td className="p-4 font-mono text-slate-400">{formatPrice(purchasePrice)}</td>
+                              <td className="p-4 font-mono font-black text-brand-blue">{formatPrice(p.price)}</td>
+                              
+                              {/* Stock Quantity Quick Stepper */}
+                              <td className="p-4">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAdjustProductStock(p, -1)}
+                                    disabled={stock <= 0}
+                                    className={`p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors ${
+                                      stock <= 0 ? 'opacity-40 cursor-not-allowed' : 'active:scale-95'
+                                    }`}
+                                    title="إنقاص المخزون بمقدار 1"
+                                  >
+                                    <Minus className="h-3 w-3" />
+                                  </button>
+                                  
+                                  <span className={`inline-block font-mono font-black px-2.5 py-0.5 rounded-lg text-xs min-w-[36px] text-center ${
+                                    stock > 5 
+                                      ? 'bg-slate-800 text-emerald-400 border border-emerald-500/20' 
+                                      : stock >= 1 
+                                        ? 'bg-amber-950/50 text-amber-300 border border-amber-500/30' 
+                                        : 'bg-rose-950/50 text-rose-400 border border-rose-500/30'
+                                  }`}>
+                                    {stock}
+                                  </span>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAdjustProductStock(p, 1)}
+                                    className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 active:scale-95 transition-colors"
+                                    title="زيادة المخزون بمقدار 1"
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </td>
+
+                              {/* Stock Status Badge */}
+                              <td className="p-4 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleStock(p)}
+                                  className={`px-3 py-1 rounded-full text-[10px] font-black border transition-all ${
+                                    statusInfo.status === 'in_stock'
+                                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                                      : statusInfo.status === 'low_stock'
+                                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
+                                        : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
+                                  }`}
+                                  title="اضغط للتبديل السريع"
+                                >
+                                  {statusInfo.status === 'in_stock' && '🟢 متوفر'}
+                                  {statusInfo.status === 'low_stock' && '🟠 مخزون منخفض'}
+                                  {statusInfo.status === 'out_of_stock' && '🔴 نفد المخزون'}
+                                </button>
+                              </td>
+
+                              <td className="p-4 text-center space-x-1 space-x-reverse">
+                                <button
+                                  type="button"
+                                  onClick={() => startEditProduct(p)}
+                                  className="p-1.5 bg-slate-800 hover:bg-brand-blue hover:text-white rounded-lg transition-colors text-slate-300"
+                                  title="تعديل"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteProduct(p.id)}
+                                  className="p-1.5 bg-slate-800 hover:bg-rose-600 hover:text-white rounded-lg transition-colors text-rose-400"
+                                  title="حذف"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -2115,8 +2385,21 @@ export default function AdminDashboard({
               </div>
 
               <div className="bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden">
-                <div className="p-4 border-b border-slate-800 flex items-center justify-between gap-4">
-                  <h4 className="text-xs font-bold">كل الطلبيات ({filteredOrdersList.length} طلبية)</h4>
+                <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <h4 className="text-xs font-bold text-white">كل الطلبيات ({filteredOrdersList.length} طلبية)</h4>
+                    {orders.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleDeleteAllOrders}
+                        className="bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20 px-3 py-1.5 rounded-xl text-[11px] font-black transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                        title="حذف جميع الطلبيات نهائياً من المتجر"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>حذف الكل 🗑️</span>
+                      </button>
+                    )}
+                  </div>
                   <div className="relative max-w-xs w-full">
                     <input
                       type="text"
@@ -2143,7 +2426,17 @@ export default function AdminDashboard({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
-                      {filteredOrdersList.map((order, index) => (
+                      {filteredOrdersList.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-8 text-center text-slate-500 font-bold">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <ShoppingBag className="h-8 w-8 text-slate-600" />
+                              <p className="text-xs">لا توجد أي طلبيات مسجلة حالياً</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredOrdersList.map((order, index) => (
                         <tr 
                           key={order.id} 
                           className="hover:bg-slate-900/50 transition-colors cursor-pointer"
@@ -2206,7 +2499,7 @@ export default function AdminDashboard({
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      )))}
                     </tbody>
                   </table>
                 </div>

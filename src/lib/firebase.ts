@@ -330,6 +330,46 @@ export async function incrementVisitors() {
   }
 }
 
+// 9. Atomic/Batch Inventory Stock Decrement upon Order Completion
+export async function deductProductsStock(orderedItems: { productId: string; quantity: number }[]) {
+  try {
+    console.log("[Firestore Stock] Deducting stock for ordered items:", orderedItems);
+    const batch = writeBatch(db);
+    let modifiedCount = 0;
+
+    for (const item of orderedItems) {
+      if (!item.productId) continue;
+      const productRef = doc(db, "products", item.productId);
+      const snap = await getDoc(productRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        const currentStock = typeof data.stock === 'number'
+          ? data.stock
+          : (typeof data.stockQuantity === 'number' ? data.stockQuantity : (data.inStock !== false ? 10 : 0));
+        
+        const newStock = Math.max(0, currentStock - item.quantity);
+        const inStock = newStock > 0;
+        
+        console.log(`[Firestore Stock] Product "${item.productId}" stock changed: ${currentStock} -> ${newStock} (inStock: ${inStock})`);
+        
+        batch.set(productRef, {
+          stock: newStock,
+          stockQuantity: newStock,
+          inStock: inStock
+        }, { merge: true });
+        modifiedCount++;
+      }
+    }
+
+    if (modifiedCount > 0) {
+      await batch.commit();
+      console.log(`[Firestore Stock] Successfully updated inventory for ${modifiedCount} products in Firestore.`);
+    }
+  } catch (err) {
+    console.error("[Firestore Stock] Error decrementing products stock in Firestore:", err);
+  }
+}
+
 // Backwards-compatible legacy wrappers
 export async function saveDoc(key: string, data: any) {
   if (key === 'settings' || key === 'siteSettings') {

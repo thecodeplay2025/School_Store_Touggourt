@@ -46,8 +46,9 @@ import AuthView from './components/AuthView';
 import UserProfileView from './components/UserProfileView';
 import AdminDashboard from './components/AdminDashboard';
 import { getCompatibleImageUrl } from './utils/imageHelper';
-import { saveDoc, getDocData, subscribeDoc, saveDocument, updateOrderStatusAtomic, initializeCollectionsIfEmpty, incrementVisitors, subscribeCollection } from './lib/firebase';
-import midadLogo from './assets/images/midad-logo.png';
+import { getProductStock, isProductAvailable } from './utils/stockHelper';
+import { saveDoc, getDocData, subscribeDoc, saveDocument, updateOrderStatusAtomic, initializeCollectionsIfEmpty, incrementVisitors, subscribeCollection, deductProductsStock } from './lib/firebase';
+import midadLogo from './assets/images/midad_logo.png';
 
 
 export default function App() {
@@ -418,7 +419,7 @@ export default function App() {
       } else if (path.startsWith('/product/')) {
         const prodId = path.replace('/product/', '');
         const foundProduct = products.find(p => p.id === prodId) || packs.find(p => p.id === prodId);
-        if (foundProduct) {
+        if (foundProduct && isProductAvailable(foundProduct)) {
           setActiveProductDetail(foundProduct);
           setCurrentView('home');
         } else {
@@ -681,11 +682,21 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Add to Cart
+  // Add to Cart with inventory limit enforcement
   const handleAddToCart = (product: Product) => {
+    const availableStock = getProductStock(product);
+    if (availableStock <= 0 || !isProductAvailable(product)) {
+      showToast(`عذراً، هذا المنتج (${product.name}) نفد من المخزون حالياً.`, 'info');
+      return;
+    }
+
     setCart((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {
+        if (existing.quantity >= availableStock) {
+          showToast(`عذراً، وصلت للحد الأقصى المتوفر في المخزون (${availableStock} قطع).`, 'info');
+          return prev;
+        }
         showToast(`تم زيادة كمية ${product.name} في السلة!`, 'success');
         return prev.map((item) =>
           item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
@@ -698,6 +709,11 @@ export default function App() {
 
   // Direct Purchase (Buy Now)
   const handleDirectPurchase = (product: Product) => {
+    const availableStock = getProductStock(product);
+    if (availableStock <= 0 || !isProductAvailable(product)) {
+      showToast(`عذراً، هذا المنتج (${product.name}) نفد من المخزون حالياً.`, 'info');
+      return;
+    }
     setDirectPurchaseItem({ product, quantity: 1 });
     setActiveProductDetail(null);
     setIsCheckoutOpen(true);
@@ -708,6 +724,14 @@ export default function App() {
     if (quantity <= 0) {
       handleRemoveFromCart(productId);
       return;
+    }
+    const itemInCart = cart.find(item => item.product.id === productId);
+    if (itemInCart) {
+      const availableStock = getProductStock(itemInCart.product);
+      if (quantity > availableStock) {
+        showToast(`عذراً، أقصى كمية متوفرة في المخزون هي ${availableStock} قطع.`, 'info');
+        return;
+      }
     }
     setCart((prev) =>
       prev.map((item) => (item.product.id === productId ? { ...item, quantity } : item))
@@ -756,6 +780,33 @@ export default function App() {
       console.log("[2] Saving order to Firestore...");
       await saveDocument('orders', orderWithUser.id, orderWithUser);
       console.log("[3] Firestore save completed");
+
+      // Decrement stock in local state immediately so UI updates in real-time
+      const orderedItemsMap = (orderWithUser.items || []).map(item => ({
+        productId: item.product.id,
+        quantity: item.quantity
+      }));
+
+      setProducts(prevProducts => {
+        return prevProducts.map(p => {
+          const ordered = orderedItemsMap.find(item => item.productId === p.id);
+          if (ordered) {
+            const currentStock = getProductStock(p);
+            const newStock = Math.max(0, currentStock - ordered.quantity);
+            return {
+              ...p,
+              stock: newStock,
+              stockQuantity: newStock,
+              inStock: newStock > 0
+            };
+          }
+          return p;
+        });
+      });
+
+      // Deduct inventory in Firestore database
+      console.log("[Firestore Stock] Decrementing products stock in database...");
+      await deductProductsStock(orderedItemsMap);
 
       // Send real-time notification to Telegram
       const sendTelegramNotification = async () => {
@@ -884,10 +935,15 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
     }, 100);
   };
 
-  // Filter products by category, target segment, and search query
+  // Filter products by category, target segment, search query, and stock availability
   const filteredProducts = useMemo(() => {
     const combined = products;
     const filtered = combined.filter((product) => {
+      // Inventory Stock Filter: Hide out-of-stock items (stock <= 0) from the buyer's store
+      if (!isProductAvailable(product)) {
+        return false;
+      }
+
       // Category Filter: Keep all products regardless of category, we sort them to the top below
       const matchesCategory = true;
 

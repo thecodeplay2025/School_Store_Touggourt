@@ -10,7 +10,8 @@ export interface Product {
   description: string;
   price: number; // in DZD
   purchasePrice?: number; // in DZD
-  stockQuantity?: number; // in stock quantity
+  stock?: number; // Current quantity in stock
+  stockQuantity?: number; // in stock quantity (synced alias)
   image: string;
   category: string;
   rating: number;

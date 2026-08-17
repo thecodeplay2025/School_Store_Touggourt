@@ -4,6 +4,7 @@ import { X, Check, Truck, Phone, User, MapPin, ClipboardList, PartyPopper } from
 import { CartItem, Municipality, Order } from '../types';
 import { MUNICIPALITIES } from '../data';
 import { getCompatibleImageUrl } from '../utils/imageHelper';
+import { getProductStock } from '../utils/stockHelper';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -80,6 +81,19 @@ export default function CheckoutModal({
     if (selectedMuni.available === false) {
       alert('عذراً، الشحن متوقف مؤقتاً لهذه المنطقة. يرجى اختيار منطقة أخرى أو الاتصال بنا.');
       return;
+    }
+
+    // Validate stock availability for each item in the cart
+    for (const item of cart) {
+      const stock = getProductStock(item.product);
+      if (stock <= 0) {
+        alert(`عذراً، المنتج "${item.product.name}" نفد من المخزون حالياً. يرجى حذفه من السلة لمتابعة الطلب.`);
+        return;
+      }
+      if (item.quantity > stock) {
+        alert(`عذراً، الكمية المطلوبة من "${item.product.name}" (${item.quantity}) تتجاوز المتوفر في المخزن (${stock} قطع). يرجى تعديل الكمية.`);
+        return;
+      }
     }
 
     setIsSubmitting(true);
