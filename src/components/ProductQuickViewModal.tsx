@@ -25,7 +25,7 @@ export default function ProductQuickViewModal({
     return price.toLocaleString('ar-DZ') + ' د.ج';
   };
 
-  const imageBg = 'bg-slate-50 border-b border-slate-100';
+  const imageBg = 'bg-white border-b border-slate-100';
 
   return (
     <AnimatePresence>

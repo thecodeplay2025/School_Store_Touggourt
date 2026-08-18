@@ -11,7 +11,8 @@ import {
   HelpCircle,
   Sparkles,
   Heart,
-  Home
+  Home,
+  ArrowRight
 } from 'lucide-react';
 import { CartItem, User, SiteSettings } from '../types';
 import midadLogo from '../assets/images/midad_logo.png';
@@ -30,6 +31,8 @@ interface HeaderProps {
   onOpenAuth?: () => void;
   onNavigateView?: (view: 'home' | 'profile' | 'admin' | 'auth') => void;
   siteSettings?: SiteSettings;
+  canGoBack?: boolean;
+  onGoBack?: () => void;
 }
 
 export default function Header({
@@ -44,7 +47,9 @@ export default function Header({
   currentUser,
   onOpenAuth,
   onNavigateView,
-  siteSettings
+  siteSettings,
+  canGoBack,
+  onGoBack
 }: HeaderProps) {
   const currentLogo = siteSettings?.logoUrl ? getCompatibleImageUrl(siteSettings.logoUrl) : midadLogo;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -68,18 +73,18 @@ export default function Header({
   const cartItemsCount = cart.reduce((total, item) => total + item.quantity, 0);
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-xs">
       {/* Top Banner (Local Delivery / Promos) */}
       {showPromo && (
-        <div className="bg-brand-blue text-white py-1.5 px-4 text-xs font-medium text-center flex items-center justify-center gap-2 relative">
-          <Sparkles className="h-3.5 w-3.5 animate-pulse text-brand-yellow" />
+        <div className="bg-brand-blue text-white py-1 px-4 text-[11px] sm:text-xs font-medium text-center flex items-center justify-center gap-2 relative">
+          <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-pulse text-brand-yellow shrink-0" />
           <span>توصيل مجاني بالكامل لكافة بلديات ولاية توقرت 🚚🎁</span>
           <button 
             onClick={() => {
               setShowPromo(false);
               localStorage.setItem('hide_school_store_promo_banner', 'true');
             }}
-            className="absolute left-3 top-1/2 -translate-y-1/2 p-1 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors"
             title="إغلاق"
           >
             <X className="h-3.5 w-3.5" />
@@ -87,51 +92,49 @@ export default function Header({
         </div>
       )}
 
-      {/* Main Navbar */}
+      {/* Main Navbar - Compact Height */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20 gap-4">
+        <div className="flex items-center justify-between h-14 sm:h-16 gap-3">
           
-          {/* Logo */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Logo & Back Button */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {canGoBack && (
+              <button 
+                type="button"
+                onClick={onGoBack}
+                id="header-back-step-button"
+                className="flex items-center gap-1.5 bg-slate-100 hover:bg-brand-blue hover:text-white text-slate-800 font-extrabold text-xs px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl transition-all shadow-xs border border-slate-200 hover:border-brand-blue cursor-pointer group shrink-0"
+                title="الرجوع خطوة للخلف"
+              >
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                <span className="hidden sm:inline">رجوع</span>
+              </button>
+            )}
+
             <button 
               onClick={() => {
                 onSelectCategory('all');
                 onNavigateView?.('home');
                 window.location.hash = '';
               }} 
-              className="flex items-center gap-2 sm:gap-2.5 group text-right"
+              className="flex items-center gap-2 group text-right"
               id="logo-button"
             >
               <img 
                 src={currentLogo} 
                 alt="midad logo" 
-                className="w-10 h-10 sm:w-12 sm:h-12 object-contain shrink-0 rounded-xl" 
+                className="w-8 h-8 sm:w-10 sm:h-10 object-contain shrink-0 rounded-xl" 
                 referrerPolicy="no-referrer" 
               />
               <div className="text-right">
-                <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-none block font-sans">
+                <span className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-none block font-sans">
                   midad
                 </span>
-                <span className="text-[10px] sm:text-[11px] font-bold text-brand-blue tracking-wide uppercase hidden min-[370px]:block mt-0.5 sm:mt-1">
+                <span className="text-[9px] sm:text-[10px] font-bold text-brand-blue tracking-wide uppercase hidden min-[370px]:block mt-0.5">
                   مداد • مكتبة وأدوات مدرسية
                 </span>
               </div>
             </button>
-          </div>
-
-          {/* Search Bar - styled identically to Trendhub */}
-          <div className="hidden md:flex flex-1 max-w-md mx-4">
-            <div className="relative w-full">
-              <input
-                type="text"
-                placeholder="ابحث عن حقيبة، آلة حاسبة، كراريس..."
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-2.5 pr-11 pl-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all"
-                id="desktop-search-input"
-              />
-              <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            </div>
           </div>
 
           {/* Quick Info & Links */}
@@ -153,9 +156,9 @@ export default function Header({
           </nav>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
             
-            {/* Home Button - Hidden on mobile, accessible in menu */}
+            {/* Home Button - Hidden on mobile */}
             <button
               onClick={() => {
                 onNavigateView?.('home');
@@ -166,56 +169,80 @@ export default function Header({
               title="الصفحة الرئيسية"
               id="home-nav-button"
             >
-              <Home className="h-5.5 w-5.5" />
+              <Home className="h-5 w-5" />
             </button>
 
-            {/* Wishlist Button - Hidden on mobile, accessible in menu */}
+            {/* Wishlist Button */}
             <button 
               onClick={onOpenWishlist}
-              className="p-2 text-slate-500 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all relative hidden sm:block"
+              className="p-2 text-slate-600 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all relative cursor-pointer"
               title="المفضلة"
               id="wishlist-trigger-button"
             >
-              <Heart className="h-5.5 w-5.5" />
+              <Heart className="h-5 w-5" />
               {wishlistCount > 0 && (
-                <span className="absolute -top-1 -left-1 bg-rose-500 text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center animate-bounce">
+                <span className="absolute -top-1 -left-1 bg-rose-500 text-white text-[10px] font-bold h-4.5 w-4.5 rounded-full flex items-center justify-center animate-bounce">
                   {wishlistCount}
                 </span>
               )}
             </button>
 
+            {/* Cart Button */}
+            <button 
+              onClick={onOpenCart}
+              className="flex items-center gap-1.5 sm:gap-2 bg-brand-blue hover:bg-blue-700 text-white px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl shadow-xs transition-all cursor-pointer relative"
+              title="سلة المشتريات"
+              id="cart-trigger-button"
+            >
+              <ShoppingBag className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+              <span className="text-xs font-bold hidden xs:inline">السلة</span>
+              {cartItemsCount > 0 && (
+                <span className="bg-brand-yellow text-slate-950 text-[10px] sm:text-[11px] font-black px-1.5 py-0.2 rounded-full min-w-[18px] text-center">
+                  {cartItemsCount}
+                </span>
+              )}
+            </button>
 
-
-
-
-            {/* Login / Profile button - fully dynamic (Admin only) */}
+            {/* Login / Profile button - Admin */}
             {currentUser && currentUser.role === 'admin' && (
               <button 
                 onClick={() => {
                   window.location.hash = '#admin';
                   onNavigateView?.('admin');
                 }}
-                className="hidden md:inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-2xl shadow-sm transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl shadow-xs transition-all cursor-pointer"
                 id="admin-dashboard-button"
               >
                 <span>لوحة التحكم ⚙️</span>
               </button>
             )}
-
-            {/* Mobile menu trigger */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-slate-600 hover:text-brand-blue hover:bg-slate-50 rounded-xl md:hidden transition-colors relative"
-              id="mobile-menu-trigger"
-              aria-label="القائمة"
-            >
-              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-              {wishlistCount > 0 && !mobileMenuOpen && (
-                <span className="absolute top-1.5 left-1.5 h-2 w-2 rounded-full bg-rose-500 animate-pulse"></span>
-              )}
-            </button>
           </div>
 
+        </div>
+      </div>
+
+      {/* Sub-bar: Search Bar Directly Below Header */}
+      <div className="border-t border-slate-200/70 bg-slate-100/90 py-1.5 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto relative" dir="rtl">
+          <input
+            type="text"
+            placeholder="ابحث عن حقيبة، آلة حاسبة، كراريس، أقلام ومستلزمات..."
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="w-full bg-white hover:bg-white border border-slate-200 rounded-xl py-2 sm:py-2.5 pr-11 pl-11 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue shadow-xs transition-all text-right"
+            id="header-sub-search-input"
+          />
+          <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => onSearchChange('')}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-200/60 transition-colors"
+              title="مسح البحث"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

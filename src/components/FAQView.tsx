@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { HelpCircle, ChevronDown, ChevronUp, Clock, ShieldCheck, MapPin } from 'lucide-react';
+import { HelpCircle, ChevronDown, ChevronUp, Clock, ShieldCheck, MapPin, ArrowRight } from 'lucide-react';
 
 interface FAQItem {
   question: string;
@@ -8,7 +8,11 @@ interface FAQItem {
   category: 'delivery' | 'payment' | 'products' | 'support';
 }
 
-export default function FAQView() {
+interface FAQViewProps {
+  onGoHome?: () => void;
+}
+
+export default function FAQView({ onGoHome }: FAQViewProps) {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
@@ -73,6 +77,20 @@ export default function FAQView() {
           {JSON.stringify(faqSchema)}
         </script>
       </Helmet>
+
+      {/* Back Button */}
+      {onGoHome && (
+        <div className="mb-6 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onGoHome}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-800 font-extrabold text-xs rounded-xl border border-slate-200 shadow-xs transition-all cursor-pointer group"
+          >
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            <span>الرجوع للصفحة الرئيسية</span>
+          </button>
+        </div>
+      )}
 
       {/* Header Banner */}
       <div className="text-center space-y-4 mb-10">

@@ -16,7 +16,8 @@ import {
   Mail,
   ShieldCheck,
   TrendingUp,
-  Tag
+  Tag,
+  ArrowRight
 } from 'lucide-react';
 import { User as UserType, Order, Product } from '../types';
 import { getCompatibleImageUrl } from '../utils/imageHelper';
@@ -30,6 +31,7 @@ interface UserProfileViewProps {
   onRemoveFromWishlist: (product: Product) => void;
   onAddToCart: (product: Product) => void;
   formatPrice: (price: number) => string;
+  onGoHome?: () => void;
 }
 
 export default function UserProfileView({
@@ -40,7 +42,8 @@ export default function UserProfileView({
   wishlist,
   onRemoveFromWishlist,
   onAddToCart,
-  formatPrice
+  formatPrice,
+  onGoHome
 }: UserProfileViewProps) {
   const [activeTab, setActiveTab] = useState<'profile' | 'orders' | 'addresses' | 'wishlist'>('profile');
   
@@ -109,10 +112,21 @@ export default function UserProfileView({
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {onGoHome && (
+              <button
+                type="button"
+                onClick={onGoHome}
+                className="bg-white text-brand-blue hover:bg-slate-50 px-5 py-3 rounded-2xl text-xs font-black transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+                title="الرجوع إلى المتجر الرئيسي"
+              >
+                <ArrowRight className="h-4 w-4" />
+                <span>الرجوع للمتجر</span>
+              </button>
+            )}
             <button
               onClick={onLogout}
-              className="bg-white/10 hover:bg-white/20 text-white px-5 py-3 rounded-2xl text-xs font-bold transition-all border border-white/10 flex items-center gap-2"
+              className="bg-white/10 hover:bg-white/20 text-white px-5 py-3 rounded-2xl text-xs font-bold transition-all border border-white/10 flex items-center gap-2 cursor-pointer"
             >
               <LogOut className="h-4 w-4" />
               <span>تسجيل الخروج</span>

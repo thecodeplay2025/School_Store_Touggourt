@@ -20,7 +20,8 @@ import {
   Sparkles,
   AlertTriangle,
   ShoppingCart,
-  Trash2
+  Trash2,
+  ArrowRight
 } from 'lucide-react';
 
 import { Product, CartItem, Order, User, Review, SiteSettings, Category, Municipality, Affiliate } from './types';
@@ -28,7 +29,6 @@ import { PRODUCTS, CATEGORIES, MUNICIPALITIES } from './data';
 
 // Components
 import Header from './components/Header';
-import Hero from './components/Hero';
 import Categories from './components/Categories';
 import ProductCard from './components/ProductCard';
 import ProductQuickViewModal from './components/ProductQuickViewModal';
@@ -1054,6 +1054,61 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
   const totalCartItemsCount = cart.reduce((total, item) => total + item.quantity, 0);
   const totalCartPrice = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
 
+  // Global Intelligent Step-Back Handler
+  const handleGlobalGoBack = () => {
+    if (isClearCartModalOpen) {
+      setIsClearCartModalOpen(false);
+      return;
+    }
+    if (isCheckoutOpen) {
+      setIsCheckoutOpen(false);
+      setDirectPurchaseItem(null);
+      return;
+    }
+    if (isQuickViewOpen) {
+      setIsQuickViewOpen(false);
+      setQuickViewProduct(null);
+      return;
+    }
+    if (isCartOpen) {
+      setIsCartOpen(false);
+      return;
+    }
+    if (isWishlistOpen) {
+      setIsWishlistOpen(false);
+      return;
+    }
+    if (isAffiliatePortalOpen) {
+      setIsAffiliatePortalOpen(false);
+      return;
+    }
+    if (activeProductDetail) {
+      setActiveProductDetail(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    if (currentView !== 'home') {
+      setCurrentView('home');
+      window.location.hash = '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    if (searchQuery) {
+      setSearchQuery('');
+      return;
+    }
+    if (selectedCategory !== 'all' || selectedSegment !== 'all') {
+      setSelectedCategory('all');
+      setSelectedSegment('all');
+      return;
+    }
+    if (window.history.length > 1) {
+      window.history.back();
+    }
+  };
+
+  const canGoBack = currentView !== 'home' || !!activeProductDetail || isCartOpen || isWishlistOpen || isCheckoutOpen || isQuickViewOpen || isAffiliatePortalOpen || isClearCartModalOpen || selectedCategory !== 'all' || selectedSegment !== 'all' || !!searchQuery;
+
   if (currentUser && currentUser.role === 'admin' && currentView === 'admin') {
     return (
       <AdminDashboard
@@ -1088,6 +1143,10 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
         onUpdateSiteSettings={setSiteSettings}
         affiliates={affiliates}
         onUpdateAffiliates={setAffiliates}
+        onGoBackToStore={() => {
+          setCurrentView('home');
+          window.location.hash = '';
+        }}
         onLogout={() => {
           setCurrentUser(null);
           setCurrentView('home');
@@ -1284,6 +1343,8 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
             window.location.hash = '';
           }
         }}
+        canGoBack={canGoBack}
+        onGoBack={handleGlobalGoBack}
       />
 
       {/* Main Content Areas */}
@@ -1307,31 +1368,22 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
           <>
             {currentView === 'home' && (
               <>
-                {/* Hero Section styled like Trendhub */}
-        <Hero 
-          onExploreClick={() => {
-            const section = document.getElementById('products-explore-section');
-            section?.scrollIntoView({ behavior: 'smooth' });
-          }}
-          onSelectCategory={handleSelectCategory}
-        />
-
-        {/* Dedicated School Packs Section */}
+                {/* Dedicated School Packs Section */}
         {!searchQuery && displayPacks.length > 0 && (
-          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 border-b border-slate-100 bg-gradient-to-b from-slate-50/40 to-white" id="packs-explore-section">
-            <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 text-right" dir="rtl">
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-b border-slate-100 bg-gradient-to-b from-slate-50/40 to-white" id="packs-explore-section">
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-4 gap-2 text-right" dir="rtl">
               <div className="w-full text-right">
 
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                   🎁 الباكات المدرسية المتكاملة (School Packs)
                 </h3>
-                <p className="text-xs text-slate-500 mt-1 font-semibold leading-relaxed">
+                <p className="text-xs text-slate-500 mt-0.5 font-semibold leading-relaxed">
                   اختر حقيبة أدوات ابنك مجهزة ومكتملة بضغطة زر واحدة، ووفّر ما يصل إلى 2000 د.ج مقارنة بالشراء المنفرد!
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8" dir="rtl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6" dir="rtl">
               {displayPacks.map((pack) => {
                 const totalItems = pack.packItems ? pack.packItems.reduce((acc, curr) => acc + curr.quantity, 0) : 0;
                 
@@ -1432,12 +1484,12 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
         />
 
         {/* Dynamic Products Display Header & Grid */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" id="products-explore-section">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6" id="products-explore-section">
           
           {/* Section Heading & Filter Indicators */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-6 mb-8 gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 mb-4 gap-3">
             <div>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                 <span>🎒 المنتجات المعروضة للبيع</span>
                 {searchQuery && (
                   <span className="text-sm font-bold text-slate-400">
@@ -1449,11 +1501,6 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
 
             {/* Current Active Filters Badges */}
             <div className="flex flex-wrap gap-2 items-center">
-              <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
-                <Filter className="h-3.5 w-3.5" />
-                <span>تصفية نشطة:</span>
-              </span>
-
               {/* Category tag */}
               {selectedCategory !== 'all' && (
                 <span className="bg-blue-50 text-brand-blue border border-blue-100 py-1 px-3 rounded-lg text-xs font-bold flex items-center gap-1.5">
@@ -1532,9 +1579,9 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
 
 
         {/* High-Fidelity Interactive Track Order & FAQ Section */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 border-t border-slate-100" id="help-section">
-          <div className="max-w-3xl mx-auto bg-white border border-slate-100 rounded-[32px] p-6 sm:p-8 shadow-sm">
-            <h3 className="text-xl font-extrabold text-slate-950 mb-6 flex items-center gap-2">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 border-t border-slate-100" id="help-section">
+          <div className="max-w-3xl mx-auto bg-white border border-slate-100 rounded-[28px] p-5 sm:p-7 shadow-xs">
+            <h3 className="text-lg sm:text-xl font-extrabold text-slate-950 mb-4 flex items-center gap-2">
               <HelpCircle className="text-brand-blue h-5 w-5" />
               <span>الأسئلة الشائعة حول خدماتنا بتوقرت</span>
             </h3>
@@ -1588,7 +1635,7 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
         )}
 
         {currentView === 'faq' && (
-          <FAQView />
+          <FAQView onGoHome={() => { setCurrentView('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
         )}
 
         {currentView === 'profile' && currentUser && (
@@ -1598,6 +1645,11 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
             wishlist={wishlist}
             onRemoveFromWishlist={handleToggleWishlist}
             onAddToCart={handleAddToCart}
+            onGoHome={() => {
+              setCurrentView('home');
+              window.location.hash = '';
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
             onLogout={() => {
               setCurrentUser(null);
               setCurrentView('home');
@@ -1692,13 +1744,9 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
             <p>© {new Date().getFullYear()} midad | مداد. جميع الحقوق محفوظة لولاية توقرت بالجزائر.</p>
             <div className="flex flex-wrap items-center gap-4">
               <button onClick={() => { setCurrentView('terms'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:underline hover:text-white cursor-pointer">شروط الاستخدام</button>
-              <span>•</span>
               <button onClick={() => { setCurrentView('privacy'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:underline hover:text-white cursor-pointer">سياسة الخصوصية</button>
-              <span>•</span>
               <button onClick={() => { setCurrentView('shipping'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:underline hover:text-white cursor-pointer">الشحن والإرجاع</button>
-              <span>•</span>
               <button onClick={() => { setCurrentView('faq'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:underline hover:text-white cursor-pointer">الأسئلة الشائعة</button>
-              <span>•</span>
               <button 
                 onClick={() => {
                   setAuthInitialMode('login');
@@ -1835,6 +1883,29 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Contextual Back Step Button */}
+      <AnimatePresence>
+        {canGoBack && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            className="fixed bottom-6 right-6 z-40"
+          >
+            <button
+              type="button"
+              onClick={handleGlobalGoBack}
+              id="floating-back-button"
+              className="flex items-center gap-2 bg-white hover:bg-brand-blue hover:text-white text-slate-800 font-black text-xs sm:text-sm px-4 py-3 rounded-2xl shadow-xl border border-slate-200 hover:border-brand-blue transition-all duration-200 cursor-pointer group backdrop-blur-md"
+              title="الرجوع خطوة للخلف"
+            >
+              <ArrowRight className="h-4.5 w-4.5 transition-transform group-hover:translate-x-1" />
+              <span>رجوع للخلف</span>
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
 

@@ -72,6 +72,10 @@ export async function compressImageFile(
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
 
+        // Pre-fill with clean white background so transparent PNGs/WebPs never turn pitch black in JPEG
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+
         // Draw image onto canvas
         ctx.drawImage(img, 0, 0, width, height);
 

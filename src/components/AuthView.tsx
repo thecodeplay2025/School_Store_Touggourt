@@ -131,14 +131,15 @@ export default function AuthView({ onAuthSuccess, onClose }: AuthViewProps) {
         </button>
       </form>
 
-      {/* Close button */}
+      {/* Back / Close button */}
       <button 
         type="button"
         onClick={onClose}
-        className="absolute top-4 left-4 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
-        title="إغلاق"
+        className="absolute top-4 left-4 px-3 py-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold border border-slate-200 cursor-pointer shadow-xs"
+        title="الرجوع إلى المتجر"
       >
-        <ArrowRight className="h-5 w-5" />
+        <ArrowRight className="h-4 w-4" />
+        <span>رجوع</span>
       </button>
     </div>
   );

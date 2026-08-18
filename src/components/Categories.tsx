@@ -19,14 +19,24 @@ const iconMap: Record<string, React.ComponentType<any>> = {
   Cpu: Cpu,
 };
 
+// Concise short labels for clean minimalism
+const shortCategoryNames: Record<string, string> = {
+  all: 'الكل',
+  bags: 'حقائب',
+  notebooks: 'كراريس',
+  writing: 'أقلام',
+  'geometry-art': 'رسم وهندسة',
+  electronics: 'حاسبات',
+};
+
 export default function Categories({ selectedCategory, onSelectCategory, products }: CategoriesProps) {
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" id="categories-section" dir="rtl">
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2.5 pb-1 sm:pt-3 sm:pb-1.5" id="categories-section" dir="rtl">
       {/* Section Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-2">
         <div>
-          <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <span>📂 تصفح حسب الفئة</span>
+          <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+            <span>الفئات</span>
           </h3>
         </div>
         <button 
@@ -34,65 +44,61 @@ export default function Categories({ selectedCategory, onSelectCategory, product
           onClick={() => onSelectCategory('all')}
           className="text-brand-blue hover:text-blue-700 font-extrabold text-xs flex items-center gap-1 transition-colors group cursor-pointer"
         >
-          <span>عرض جميع المعروضات</span>
+          <span>عرض الكل</span>
           <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
         </button>
       </div>
 
-      {/* Horizontal Scrollable Row of Categories */}
-      <div className="flex overflow-x-auto gap-3.5 pb-4 pt-1 scrollbar-none snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth">
+      {/* Horizontal Scrollable Row of Concise Category Pills */}
+      <div className="flex items-center overflow-x-auto gap-2 sm:gap-2.5 pb-1 pt-0.5 scrollbar-none snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth">
         
-        {/* "All" Category Capsule */}
-        <motion.div
-          whileHover={{ y: -3 }}
+        {/* "All" Category Pill */}
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.97 }}
           onClick={() => onSelectCategory('all')}
-          className={`flex-none snap-start rounded-2xl border p-3.5 flex items-center gap-3 transition-all cursor-pointer min-w-[170px] sm:min-w-[190px] ${
+          className={`flex-none snap-start rounded-xl px-3.5 py-2 sm:px-4 sm:py-2.5 flex items-center gap-2 transition-all cursor-pointer text-xs font-bold whitespace-nowrap border ${
             selectedCategory === 'all'
-              ? 'border-brand-blue bg-blue-50/50 ring-2 ring-brand-blue/15 shadow-sm'
-              : 'border-slate-200/60 bg-white hover:shadow-md hover:border-slate-300'
+              ? 'bg-brand-blue text-white border-brand-blue shadow-xs ring-2 ring-brand-blue/20'
+              : 'bg-white text-slate-700 hover:text-slate-900 border-slate-200/80 hover:border-slate-300 hover:bg-slate-50 shadow-xs'
           }`}
         >
-          <div className={`p-2.5 rounded-xl ${selectedCategory === 'all' ? 'bg-brand-blue text-white' : 'bg-slate-100 text-slate-700'}`}>
-            <Sparkles className="h-5 w-5 shrink-0" />
-          </div>
-          <div className="text-right">
-            <h4 className="text-xs sm:text-sm font-extrabold text-slate-900">كل المعروضات</h4>
-            <p className="text-[10px] text-slate-400 font-bold mt-0.5">{products.length} منتج متوفر</p>
-          </div>
-        </motion.div>
+          <Sparkles className={`h-4 w-4 shrink-0 ${selectedCategory === 'all' ? 'text-brand-yellow' : 'text-slate-400'}`} />
+          <span>الكل</span>
+          <span className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${
+            selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+          }`}>
+            {products.length}
+          </span>
+        </motion.button>
 
-        {/* Dynamic Categories Capsules */}
+        {/* Dynamic Category Pills with Concise Words */}
         {CATEGORIES.map((category) => {
           const IconComponent = iconMap[category.iconName] || ShoppingBag;
           const isSelected = selectedCategory === category.id;
           const dynamicCount = products.filter(p => p.category === category.id).length;
+          const shortName = shortCategoryNames[category.id] || category.name;
 
           return (
-            <motion.div
+            <motion.button
               key={category.id}
-              whileHover={{ y: -3 }}
+              type="button"
+              whileTap={{ scale: 0.97 }}
               onClick={() => onSelectCategory(category.id)}
-              className={`flex-none snap-start rounded-2xl border p-3.5 flex items-center gap-3 transition-all cursor-pointer min-w-[190px] sm:min-w-[210px] ${
-                isSelected 
-                  ? 'border-brand-blue bg-blue-50/50 ring-2 ring-brand-blue/15 shadow-sm' 
-                  : 'border-slate-200/60 bg-white hover:shadow-md hover:border-slate-300'
+              className={`flex-none snap-start rounded-xl px-3.5 py-2 sm:px-4 sm:py-2.5 flex items-center gap-2 transition-all cursor-pointer text-xs font-bold whitespace-nowrap border ${
+                isSelected
+                  ? 'bg-brand-blue text-white border-brand-blue shadow-xs ring-2 ring-brand-blue/20'
+                  : 'bg-white text-slate-700 hover:text-slate-900 border-slate-200/80 hover:border-slate-300 hover:bg-slate-50 shadow-xs'
               }`}
             >
-              {/* Icon Container */}
-              <div className={`p-2.5 rounded-xl ${isSelected ? 'bg-brand-blue text-white' : 'bg-slate-100 text-slate-700'}`}>
-                <IconComponent className="h-5 w-5 shrink-0" />
-              </div>
-
-              {/* Metadata */}
-              <div className="text-right min-w-0 flex-1">
-                <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 truncate">
-                  {category.name}
-                </h4>
-                <p className="text-[10px] text-slate-400 font-bold mt-0.5">
-                  {dynamicCount} منتج متوفر
-                </p>
-              </div>
-            </motion.div>
+              <IconComponent className={`h-4 w-4 shrink-0 ${isSelected ? 'text-white' : 'text-slate-500'}`} />
+              <span>{shortName}</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${
+                isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+              }`}>
+                {dynamicCount}
+              </span>
+            </motion.button>
           );
         })}
 

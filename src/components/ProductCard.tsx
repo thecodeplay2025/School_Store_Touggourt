@@ -26,7 +26,7 @@ export default function ProductCard({
     return price.toLocaleString('ar-DZ') + ' د.ج';
   };
 
-  const imageBg = 'bg-slate-50';
+  const imageBg = 'bg-white';
 
   return (
     <motion.div

@@ -94,6 +94,19 @@ export interface SiteSettings {
   promoBannerText: string;
   logoUrl?: string;
   referralCommissionRate?: number; // percentage, e.g. 10 for 10%
+  // Hero Banner Customization
+  heroBadge?: string;
+  heroTitle?: string;
+  heroSubtitle?: string;
+  heroBgColor?: string;
+  heroShowImages?: boolean;
+  heroCard1Image?: string;
+  heroCard1Title?: string;
+  heroCard1Price?: string;
+  heroCard2Image?: string;
+  heroCard2Title?: string;
+  heroCard2Price?: string;
+  heroBannerImage?: string;
 }
 
 export interface Affiliate {

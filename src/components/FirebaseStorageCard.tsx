@@ -150,41 +150,41 @@ export const FirebaseStorageCard: React.FC<FirebaseStorageCardProps> = ({
   };
 
   // Status color evaluation
-  let progressColorClass = 'bg-emerald-500 text-emerald-400 border-emerald-500/30';
+  let progressColorClass = 'bg-emerald-500 text-emerald-600 border-emerald-500/30';
   let badgeText = 'حالة ممتازة 🟢';
-  let badgeBg = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+  let badgeBg = 'bg-emerald-50 text-emerald-700 border-emerald-200';
 
   if (breakdown.usagePercent > 95) {
-    progressColorClass = 'bg-red-500 text-red-400 border-red-500/30';
+    progressColorClass = 'bg-red-500 text-red-600 border-red-500/30';
     badgeText = 'حرج جداً (>95%) 🔴';
-    badgeBg = 'bg-red-500/10 text-red-400 border-red-500/20';
+    badgeBg = 'bg-red-50 text-red-700 border-red-200';
   } else if (breakdown.usagePercent > 80) {
-    progressColorClass = 'bg-amber-500 text-amber-400 border-amber-500/30';
+    progressColorClass = 'bg-amber-500 text-amber-600 border-amber-500/30';
     badgeText = 'تحذير (>80%) 🟠';
-    badgeBg = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+    badgeBg = 'bg-amber-50 text-amber-700 border-amber-200';
   }
 
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 sm:p-6 space-y-5 shadow-xl relative overflow-hidden transition-all hover:border-slate-750">
+    <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 space-y-5 shadow-xs relative overflow-hidden transition-all hover:border-slate-300">
       {/* Decorative background glow */}
       <div className="absolute top-0 left-0 -translate-x-12 -translate-y-12 w-48 h-48 bg-brand-blue/5 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header Row */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-brand-blue/10 text-brand-blue rounded-2xl border border-brand-blue/20 shadow-sm shrink-0">
+          <div className="p-3 bg-brand-blue/10 text-brand-blue rounded-2xl border border-brand-blue/20 shadow-xs shrink-0">
             <Database className="h-6 w-6" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-base sm:text-lg font-black text-white">استهلاك قاعدة البيانات (Firestore)</h3>
+              <h3 className="text-base sm:text-lg font-black text-slate-900">استهلاك قاعدة البيانات (Firestore)</h3>
               <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${badgeBg}`}>
                 {badgeText}
               </span>
             </div>
-            <p className="text-xs text-slate-400 font-medium mt-0.5 flex items-center gap-1.5">
+            <p className="text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-1.5">
               <span>Firebase Spark Plan (الخطة المجانية 1 GiB)</span>
-              <span className="text-slate-600">•</span>
+              <span className="text-slate-300">•</span>
               <span className="font-mono text-[11px] text-slate-500">{breakdown.totalDocCount} مستند مسجل</span>
             </p>
           </div>
@@ -195,7 +195,7 @@ export const FirebaseStorageCard: React.FC<FirebaseStorageCardProps> = ({
           type="button"
           onClick={handleRefresh}
           disabled={isRefreshing}
-          className="bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+          className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shadow-xs"
           title="تحديث حساب مساحة قاعدة البيانات"
         >
           <RefreshCw className={`h-3.5 w-3.5 text-brand-blue ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -205,10 +205,10 @@ export const FirebaseStorageCard: React.FC<FirebaseStorageCardProps> = ({
 
       {/* Critical / Warning Alert Banners */}
       {breakdown.usagePercent > 95 && (
-        <div className="bg-red-950/40 border border-red-500/30 rounded-2xl p-4 flex items-start gap-3 text-red-300 animate-in fade-in duration-300">
-          <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5 animate-bounce" />
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3 text-red-800 animate-in fade-in duration-300">
+          <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5 animate-bounce" />
           <div className="text-xs space-y-1">
-            <h4 className="font-bold text-red-200">⚠️ تحذير حرج: تجاوز استهلاك البيانات 95%!</h4>
+            <h4 className="font-bold text-red-900">⚠️ تحذير حرج: تجاوز استهلاك البيانات 95%!</h4>
             <p className="leading-relaxed opacity-90">
               وصل استهلاك قاعدة البيانات إلى <span className="font-mono font-black dir-ltr inline-block">{breakdown.usagePercent}%</span> من سعة الخطة المجانية (1 GiB). يرجى مسح الطلبات المعالجة القديمة أو ترقية الخطة لمنع توقف الخدمة.
             </p>
@@ -217,10 +217,10 @@ export const FirebaseStorageCard: React.FC<FirebaseStorageCardProps> = ({
       )}
 
       {breakdown.usagePercent > 80 && breakdown.usagePercent <= 95 && (
-        <div className="bg-amber-950/40 border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3 text-amber-300 animate-in fade-in duration-300">
-          <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 text-amber-800 animate-in fade-in duration-300">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="text-xs space-y-1">
-            <h4 className="font-bold text-amber-200">⚡ تنبيه: اقتراب حد السعة التخزينية (تجاوز 80%)</h4>
+            <h4 className="font-bold text-amber-900">⚡ تنبيه: اقتراب حد السعة التخزينية (تجاوز 80%)</h4>
             <p className="leading-relaxed opacity-90">
               لقد استهلكت <span className="font-mono font-black dir-ltr inline-block">{breakdown.usagePercent}%</span> من السعة التخزينية المتاحة.
             </p>
@@ -231,19 +231,19 @@ export const FirebaseStorageCard: React.FC<FirebaseStorageCardProps> = ({
       {/* Progress Bar & Percentage */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <span className="font-bold text-slate-300 flex items-center gap-1.5">
+          <span className="font-bold text-slate-700 flex items-center gap-1.5">
             <HardDrive className="h-4 w-4 text-brand-blue" />
             نسبة الاستهلاك الحالية:
           </span>
-          <span className="font-mono font-black text-sm text-white bg-slate-900 border border-slate-800 px-3 py-1 rounded-xl">
+          <span className="font-mono font-black text-sm text-slate-900 bg-slate-100 border border-slate-200 px-3 py-1 rounded-xl">
             {breakdown.usagePercent}%
           </span>
         </div>
 
         {/* Outer Bar */}
-        <div className="w-full h-4 bg-slate-900 border border-slate-800 rounded-full p-0.5 overflow-hidden relative shadow-inner">
+        <div className="w-full h-4 bg-slate-100 border border-slate-200 rounded-full p-0.5 overflow-hidden relative shadow-inner">
           <div
-            className={`h-full rounded-full transition-all duration-700 ease-out shadow-lg ${
+            className={`h-full rounded-full transition-all duration-700 ease-out shadow-xs ${
               breakdown.usagePercent > 95
                 ? 'bg-gradient-to-r from-red-600 to-rose-500'
                 : breakdown.usagePercent > 80
@@ -258,63 +258,63 @@ export const FirebaseStorageCard: React.FC<FirebaseStorageCardProps> = ({
       {/* Structured Metrics Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
         {/* Used */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 space-y-1">
-          <span className="text-[10px] font-bold text-slate-400 block">المساحة المستخدمة (Used)</span>
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-1">
+          <span className="text-[10px] font-bold text-slate-500 block">المساحة المستخدمة (Used)</span>
           <span className="text-base sm:text-lg font-black font-mono text-brand-blue block dir-ltr text-right">
             {formatStorageSize(breakdown.usedBytes)}
           </span>
-          <span className="text-[9px] text-slate-500 block font-mono">
+          <span className="text-[9px] text-slate-400 block font-mono">
             ({breakdown.usedBytes.toLocaleString()} bytes)
           </span>
         </div>
 
         {/* Remaining */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 space-y-1">
-          <span className="text-[10px] font-bold text-slate-400 block">المساحة المتبقية (Remaining)</span>
-          <span className="text-base sm:text-lg font-black font-mono text-emerald-400 block dir-ltr text-right">
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-1">
+          <span className="text-[10px] font-bold text-slate-500 block">المساحة المتبقية (Remaining)</span>
+          <span className="text-base sm:text-lg font-black font-mono text-emerald-600 block dir-ltr text-right">
             {formatStorageSize(breakdown.remainingBytes, 'MB')}
           </span>
-          <span className="text-[9px] text-slate-500 block">
+          <span className="text-[9px] text-slate-400 block">
             متاحة للاستخدام
           </span>
         </div>
 
         {/* Total Capacity */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 space-y-1">
-          <span className="text-[10px] font-bold text-slate-400 block">السعة الكلية (Total)</span>
-          <span className="text-base sm:text-lg font-black font-mono text-purple-400 block dir-ltr text-right">
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-1">
+          <span className="text-[10px] font-bold text-slate-500 block">السعة الكلية (Total)</span>
+          <span className="text-base sm:text-lg font-black font-mono text-purple-600 block dir-ltr text-right">
             1 GiB
           </span>
-          <span className="text-[9px] text-slate-500 block">
+          <span className="text-[9px] text-slate-400 block">
             (1,024 MB / Spark Plan)
           </span>
         </div>
 
         {/* Usage % */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 space-y-1">
-          <span className="text-[10px] font-bold text-slate-400 block">نسبة الاستغلال (Usage)</span>
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-1">
+          <span className="text-[10px] font-bold text-slate-500 block">نسبة الاستغلال (Usage)</span>
           <span className={`text-base sm:text-lg font-black font-mono block dir-ltr text-right ${
-            breakdown.usagePercent > 95 ? 'text-red-400' : breakdown.usagePercent > 80 ? 'text-amber-400' : 'text-emerald-400'
+            breakdown.usagePercent > 95 ? 'text-red-600' : breakdown.usagePercent > 80 ? 'text-amber-600' : 'text-emerald-600'
           }`}>
             {breakdown.usagePercent}%
           </span>
-          <span className="text-[9px] text-slate-500 block">
+          <span className="text-[9px] text-slate-400 block">
             من إجمالي 100%
           </span>
         </div>
       </div>
 
       {/* Estimation Note Footer & Detailed Accordion Toggle */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs border-t border-slate-800/80">
-        <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
-          <Info className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs border-t border-slate-100">
+        <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+          <Info className="h-3.5 w-3.5 text-amber-500 shrink-0" />
           <span>قيمة تقديرية مبنية على حساب أوزان المستندات في المجموعات (Collections).</span>
         </div>
 
         <button
           type="button"
           onClick={() => setShowDetails(!showDetails)}
-          className="text-brand-blue hover:text-blue-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
+          className="text-brand-blue hover:text-blue-700 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
         >
           <Layers className="h-3.5 w-3.5" />
           <span>{showDetails ? 'إخفاء تفاصيل المجموعات' : 'عرض توزيع المجموعات'}</span>
@@ -324,8 +324,8 @@ export const FirebaseStorageCard: React.FC<FirebaseStorageCardProps> = ({
 
       {/* Detailed Collections Accordion Grid */}
       {showDetails && (
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-          <h4 className="text-xs font-black text-white flex items-center gap-2 border-b border-slate-800 pb-2">
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          <h4 className="text-xs font-black text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-2">
             <span>توزيع أحجام البيانات حسب المجموعات المسجلة:</span>
           </h4>
 
@@ -333,17 +333,17 @@ export const FirebaseStorageCard: React.FC<FirebaseStorageCardProps> = ({
             {breakdown.collections.map((col, idx) => (
               <div
                 key={idx}
-                className="bg-slate-950 border border-slate-800/90 hover:border-slate-700 p-2.5 rounded-xl flex items-center justify-between gap-2 transition-colors text-xs"
+                className="bg-white border border-slate-200 hover:border-slate-300 p-2.5 rounded-xl flex items-center justify-between gap-2 transition-colors text-xs shadow-xs"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-sm">{col.icon}</span>
                   <div className="min-w-0">
-                    <span className="font-bold text-slate-200 block truncate">{col.name}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">{col.count} مستند</span>
+                    <span className="font-bold text-slate-800 block truncate">{col.name}</span>
+                    <span className="text-[10px] text-slate-500 font-mono">{col.count} مستند</span>
                   </div>
                 </div>
 
-                <span className="font-mono font-bold text-slate-300 text-[11px] shrink-0 dir-ltr">
+                <span className="font-mono font-bold text-slate-600 text-[11px] shrink-0 dir-ltr">
                   {formatStorageSize(col.bytes)}
                 </span>
               </div>
