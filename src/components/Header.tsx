@@ -15,7 +15,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { CartItem, User, SiteSettings } from '../types';
-import midadLogo from '../assets/images/midad_logo.webp';
+import midadLogo from '../assets/images/midad_logo.png';
 import { getCompatibleImageUrl } from '../utils/imageHelper';
 
 interface HeaderProps {
@@ -123,8 +123,6 @@ export default function Header({
               <img 
                 src={currentLogo} 
                 alt="midad logo" 
-                width="40"
-                height="40"
                 className="w-8 h-8 sm:w-10 sm:h-10 object-contain shrink-0 rounded-xl" 
                 referrerPolicy="no-referrer" 
               />
