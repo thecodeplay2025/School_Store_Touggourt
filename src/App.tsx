@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Filter, 
@@ -27,28 +27,30 @@ import {
 import { Product, CartItem, Order, User, Review, SiteSettings, Category, Municipality, Affiliate } from './types';
 import { PRODUCTS, CATEGORIES, MUNICIPALITIES } from './data';
 
-// Components
+// Core Critical Components (Loaded directly for instant LCP & interactivity)
 import Header from './components/Header';
 import Categories from './components/Categories';
 import ProductCard from './components/ProductCard';
-import ProductQuickViewModal from './components/ProductQuickViewModal';
 import CartDrawer from './components/CartDrawer';
 import WishlistDrawer from './components/WishlistDrawer';
-import CheckoutModal from './components/CheckoutModal';
-import PackLandingPage from './components/PackLandingPage';
 import SEO from './components/SEO';
-import NotFoundView from './components/NotFoundView';
-import InfoPagesView from './components/InfoPagesView';
-import FAQView from './components/FAQView';
-import AffiliatePortalModal from './components/AffiliatePortalModal';
 
-import AuthView from './components/AuthView';
-import UserProfileView from './components/UserProfileView';
-import AdminDashboard from './components/AdminDashboard';
+// Heavy & Secondary Views / Modals (Lazy Loaded on Demand to drastically shrink initial JS bundle)
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const AuthView = lazy(() => import('./components/AuthView'));
+const UserProfileView = lazy(() => import('./components/UserProfileView'));
+const AffiliatePortalModal = lazy(() => import('./components/AffiliatePortalModal'));
+const PackLandingPage = lazy(() => import('./components/PackLandingPage'));
+const CheckoutModal = lazy(() => import('./components/CheckoutModal'));
+const ProductQuickViewModal = lazy(() => import('./components/ProductQuickViewModal'));
+const FAQView = lazy(() => import('./components/FAQView'));
+const InfoPagesView = lazy(() => import('./components/InfoPagesView'));
+const NotFoundView = lazy(() => import('./components/NotFoundView'));
+
 import { getCompatibleImageUrl } from './utils/imageHelper';
 import { getProductStock, isProductAvailable } from './utils/stockHelper';
 import { saveDoc, getDocData, subscribeDoc, saveDocument, updateOrderStatusAtomic, initializeCollectionsIfEmpty, incrementVisitors, subscribeCollection, deductProductsStock } from './lib/firebase';
-import midadLogo from './assets/images/midad_logo.png';
+import midadLogo from './assets/images/midad_logo.webp';
 
 
 export default function App() {
@@ -1118,50 +1120,57 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
 
   if (currentUser && currentUser.role === 'admin' && currentView === 'admin') {
     return (
-      <AdminDashboard
-        products={products}
-        categories={categories}
-        orders={recentOrders}
-        users={allUsers}
-        municipalities={municipalities}
-        reviews={reviews}
-        siteSettings={siteSettings}
-        packs={packs}
-        visitorsCount={visitorsCount}
-        onUpdateVisitorsCount={(newCount) => {
-          setVisitorsCount(newCount);
-          saveToServer('visitors', { count: newCount });
-        }}
-        onUpdatePacks={setPacks}
-        onUpdateProducts={(updatedProducts) => {
-          setProducts(updatedProducts);
-          // If a new product was added (length increased), reset active filters
-          if (updatedProducts.length > products.length) {
-            setSelectedCategory('all');
-            setSelectedSegment('all');
-            setSearchQuery('');
-          }
-        }}
-        onUpdateCategories={setCategories}
-        onUpdateOrders={setRecentOrders}
-        onUpdateUsers={setAllUsers}
-        onUpdateMunicipalities={setMunicipalities}
-        onUpdateReviews={setReviews}
-        onUpdateSiteSettings={setSiteSettings}
-        affiliates={affiliates}
-        onUpdateAffiliates={setAffiliates}
-        onGoBackToStore={() => {
-          setCurrentView('home');
-          window.location.hash = '';
-        }}
-        onLogout={() => {
-          setCurrentUser(null);
-          setCurrentView('home');
-          window.location.hash = '';
-          showToast('تم تسجيل الخروج من لوحة التحكم بنجاح', 'info');
-        }}
-        formatPrice={formatPrice}
-      />
+      <Suspense fallback={
+        <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-8 text-center" dir="rtl">
+          <div className="w-10 h-10 border-4 border-white/20 border-t-brand-blue rounded-full animate-spin mb-4" />
+          <span className="text-sm font-bold text-white">جاري تحميل لوحة التحكم...</span>
+        </div>
+      }>
+        <AdminDashboard
+          products={products}
+          categories={categories}
+          orders={recentOrders}
+          users={allUsers}
+          municipalities={municipalities}
+          reviews={reviews}
+          siteSettings={siteSettings}
+          packs={packs}
+          visitorsCount={visitorsCount}
+          onUpdateVisitorsCount={(newCount) => {
+            setVisitorsCount(newCount);
+            saveToServer('visitors', { count: newCount });
+          }}
+          onUpdatePacks={setPacks}
+          onUpdateProducts={(updatedProducts) => {
+            setProducts(updatedProducts);
+            // If a new product was added (length increased), reset active filters
+            if (updatedProducts.length > products.length) {
+              setSelectedCategory('all');
+              setSelectedSegment('all');
+              setSearchQuery('');
+            }
+          }}
+          onUpdateCategories={setCategories}
+          onUpdateOrders={setRecentOrders}
+          onUpdateUsers={setAllUsers}
+          onUpdateMunicipalities={setMunicipalities}
+          onUpdateReviews={setReviews}
+          onUpdateSiteSettings={setSiteSettings}
+          affiliates={affiliates}
+          onUpdateAffiliates={setAffiliates}
+          onGoBackToStore={() => {
+            setCurrentView('home');
+            window.location.hash = '';
+          }}
+          onLogout={() => {
+            setCurrentUser(null);
+            setCurrentView('home');
+            window.location.hash = '';
+            showToast('تم تسجيل الخروج من لوحة التحكم بنجاح', 'info');
+          }}
+          formatPrice={formatPrice}
+        />
+      </Suspense>
     );
   }
 
@@ -1356,24 +1365,30 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
 
       {/* Main Content Areas */}
       <main className="flex-1 pb-16">
-        {currentView === '404' ? (
-          <NotFoundView onGoHome={() => {
-            setCurrentView('home');
-            setActiveProductDetail(null);
-          }} />
-        ) : (activeProductDetail && activeProductDetail.isPack) ? (
-          <PackLandingPage
-            product={activeProductDetail}
-            onClose={() => setActiveProductDetail(null)}
-            onAddToCart={handleAddToCart}
-            onAddToWishlist={handleToggleWishlist}
-            isWishlisted={wishlist.some(item => item.id === activeProductDetail.id)}
-            onDirectPurchase={handleDirectPurchase}
-            products={products}
-          />
-        ) : (
-          <>
-            {currentView === 'home' && (
+        <Suspense fallback={
+          <div className="min-h-[40vh] flex flex-col items-center justify-center p-8 text-center" dir="rtl">
+            <div className="w-8 h-8 border-3 border-brand-blue/20 border-t-brand-blue rounded-full animate-spin mb-3" />
+            <span className="text-xs font-bold text-slate-500">جاري التحميل...</span>
+          </div>
+        }>
+          {currentView === '404' ? (
+            <NotFoundView onGoHome={() => {
+              setCurrentView('home');
+              setActiveProductDetail(null);
+            }} />
+          ) : (activeProductDetail && activeProductDetail.isPack) ? (
+            <PackLandingPage
+              product={activeProductDetail}
+              onClose={() => setActiveProductDetail(null)}
+              onAddToCart={handleAddToCart}
+              onAddToWishlist={handleToggleWishlist}
+              isWishlisted={wishlist.some(item => item.id === activeProductDetail.id)}
+              onDirectPurchase={handleDirectPurchase}
+              products={products}
+            />
+          ) : (
+            <>
+              {currentView === 'home' && (
               <>
                 {/* Dedicated School Packs Section */}
         {!searchQuery && displayPacks.length > 0 && (
@@ -1418,6 +1433,8 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
                           alt={pack.name}
                           className="max-h-full max-w-full object-contain rounded-2xl group-hover:scale-102 transition-transform duration-500"
                           referrerPolicy="no-referrer"
+                          loading="lazy"
+                          decoding="async"
                         />
                         <div className="absolute top-4 right-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-[11px] py-1.5 px-3.5 rounded-full shadow-md z-10 flex items-center gap-1">
                           <Sparkles className="h-3 w-3 text-yellow-200 animate-pulse shrink-0" />
@@ -1672,36 +1689,36 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
           />
         )}
 
-        {currentView === 'auth' && (
-          <AuthView 
-            initialMode={authInitialMode}
-            onClose={() => {
-              setCurrentView('home');
-              window.location.hash = '';
-            }}
-            onAuthSuccess={(user) => {
-              setCurrentUser(user);
-              setAllUsers((prev) => {
-                if (prev.some((u) => u.email === user.email)) {
-                  return prev;
-                }
-                return [...prev, user];
-              });
-              
-              showToast(`مرحباً بك مجدداً، ${user.name}! 👋`, 'success');
-              if (user.role === 'admin') {
-                setCurrentView('admin');
-                window.location.hash = '#admin';
-              } else {
-                setCurrentView('profile');
-                window.location.hash = '#profile';
-              }
-            }}
-          />
-        )}
-          </>
-        )}
-
+              {currentView === 'auth' && (
+                <AuthView 
+                  initialMode={authInitialMode}
+                  onClose={() => {
+                    setCurrentView('home');
+                    window.location.hash = '';
+                  }}
+                  onAuthSuccess={(user) => {
+                    setCurrentUser(user);
+                    setAllUsers((prev) => {
+                      if (prev.some((u) => u.email === user.email)) {
+                        return prev;
+                      }
+                      return [...prev, user];
+                    });
+                    
+                    showToast(`مرحباً بك مجدداً، ${user.name}! 👋`, 'success');
+                    if (user.role === 'admin') {
+                      setCurrentView('admin');
+                      window.location.hash = '#admin';
+                    } else {
+                      setCurrentView('profile');
+                      window.location.hash = '#profile';
+                    }
+                  }}
+                />
+              )}
+            </>
+          )}
+        </Suspense>
       </main>
 
       {/* Footer Area */}
@@ -1796,39 +1813,51 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
       />
 
       {/* Checkout Form Modal */}
-      <CheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => {
-          setIsCheckoutOpen(false);
-          setDirectPurchaseItem(null);
-        }}
-        cart={directPurchaseItem ? [directPurchaseItem] : cart}
-        onOrderSuccess={handleOrderSuccess}
-        onClearCart={directPurchaseItem ? () => setDirectPurchaseItem(null) : handleClearCart}
-        isDirect={!!directPurchaseItem}
-        municipalities={municipalities}
-      />
+      {isCheckoutOpen && (
+        <Suspense fallback={null}>
+          <CheckoutModal
+            isOpen={isCheckoutOpen}
+            onClose={() => {
+              setIsCheckoutOpen(false);
+              setDirectPurchaseItem(null);
+            }}
+            cart={directPurchaseItem ? [directPurchaseItem] : cart}
+            onOrderSuccess={handleOrderSuccess}
+            onClearCart={directPurchaseItem ? () => setDirectPurchaseItem(null) : handleClearCart}
+            isDirect={!!directPurchaseItem}
+            municipalities={municipalities}
+          />
+        </Suspense>
+      )}
 
       {/* Product Quick View Modal */}
-      <ProductQuickViewModal
-        isOpen={isQuickViewOpen}
-        onClose={() => {
-          setIsQuickViewOpen(false);
-          setQuickViewProduct(null);
-        }}
-        product={quickViewProduct}
-        onDirectPurchase={handleDirectPurchase}
-        onAddToCart={handleAddToCart}
-      />
+      {isQuickViewOpen && (
+        <Suspense fallback={null}>
+          <ProductQuickViewModal
+            isOpen={isQuickViewOpen}
+            onClose={() => {
+              setIsQuickViewOpen(false);
+              setQuickViewProduct(null);
+            }}
+            product={quickViewProduct}
+            onDirectPurchase={handleDirectPurchase}
+            onAddToCart={handleAddToCart}
+          />
+        </Suspense>
+      )}
 
       {/* Affiliate Earnings & Portal Modal */}
-      <AffiliatePortalModal
-        isOpen={isAffiliatePortalOpen}
-        onClose={() => setIsAffiliatePortalOpen(false)}
-        affiliates={affiliates}
-        orders={recentOrders}
-        formatPrice={formatPrice}
-      />
+      {isAffiliatePortalOpen && (
+        <Suspense fallback={null}>
+          <AffiliatePortalModal
+            isOpen={isAffiliatePortalOpen}
+            onClose={() => setIsAffiliatePortalOpen(false)}
+            affiliates={affiliates}
+            orders={recentOrders}
+            formatPrice={formatPrice}
+          />
+        </Suspense>
+      )}
 
       {/* Clear Cart Confirmation Modal */}
       <AnimatePresence>
