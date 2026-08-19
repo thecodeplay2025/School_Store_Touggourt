@@ -65,18 +65,12 @@ export default function Categories({ selectedCategory, onSelectCategory, product
         >
           <Sparkles className={`h-4 w-4 shrink-0 ${selectedCategory === 'all' ? 'text-brand-yellow' : 'text-slate-400'}`} />
           <span>الكل</span>
-          <span className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${
-            selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
-          }`}>
-            {products.length}
-          </span>
         </motion.button>
 
         {/* Dynamic Category Pills with Concise Words */}
         {CATEGORIES.map((category) => {
           const IconComponent = iconMap[category.iconName] || ShoppingBag;
           const isSelected = selectedCategory === category.id;
-          const dynamicCount = products.filter(p => p.category === category.id).length;
           const shortName = shortCategoryNames[category.id] || category.name;
 
           return (
@@ -93,11 +87,6 @@ export default function Categories({ selectedCategory, onSelectCategory, product
             >
               <IconComponent className={`h-4 w-4 shrink-0 ${isSelected ? 'text-white' : 'text-slate-500'}`} />
               <span>{shortName}</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-md font-mono ${
-                isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
-              }`}>
-                {dynamicCount}
-              </span>
             </motion.button>
           );
         })}

@@ -69,12 +69,12 @@ export default function ProductQuickViewModal({
               <img
                 src={getCompatibleImageUrl(product.image)}
                 alt={product.name}
-                className="max-h-[90%] max-w-[90%] object-contain rounded-2xl drop-shadow-md"
+                className="max-h-[90%] max-w-[90%] object-contain rounded-2xl"
                 referrerPolicy="no-referrer"
               />
 
               {!product.inStock && (
-                <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center rounded-t-[2rem]">
+                <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center rounded-t-[2rem]">
                   <span className="bg-red-500 text-white font-black text-sm py-2 px-6 rounded-xl shadow-lg">
                     نفذت الكمية 😔
                   </span>

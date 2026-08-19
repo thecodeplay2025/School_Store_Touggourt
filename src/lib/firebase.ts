@@ -53,6 +53,25 @@ export function sanitizeData(val: any, path: string = ""): any {
   return val;
 }
 
+// Track if Firestore quota is currently exhausted to prevent repeated failures
+let isFirestoreQuotaExhausted = false;
+
+export function handleFirestoreError(err: any, context: string) {
+  if (
+    err?.code === 'resource-exhausted' || 
+    err?.message?.includes('Quota limit exceeded') || 
+    err?.message?.includes('resource-exhausted') ||
+    err?.message?.includes('Quota exceeded')
+  ) {
+    if (!isFirestoreQuotaExhausted) {
+      isFirestoreQuotaExhausted = true;
+      console.warn(`[Firestore Quota Notice] Free daily write quota reached on Firestore during "${context}". Continuing seamlessly with local storage persistence.`);
+    }
+    return;
+  }
+  console.error(`[Firestore Error in ${context}]:`, err);
+}
+
 // 1. Database Seeder on Startup
 export async function initializeCollectionsIfEmpty() {
   try {
@@ -160,31 +179,32 @@ export function subscribeDoc(collectionName: string, docId: string, callback: (d
 
 // 4. Save single document helper
 export async function saveDocument(collectionName: string, docId: string, data: any) {
+  if (isFirestoreQuotaExhausted) return;
   try {
     const docRef = doc(db, collectionName, docId);
     const sanitized = sanitizeData(data);
     await setDoc(docRef, sanitized || {}, { merge: true });
     console.log(`[Firestore] Document saved successfully at: ${collectionName}/${docId}`);
   } catch (err) {
-    console.error(`Error saving document ${collectionName}/${docId}:`, err);
-    throw err;
+    handleFirestoreError(err, `saveDocument ${collectionName}/${docId}`);
   }
 }
 
 // 5. Delete single document helper
 export async function deleteDocument(collectionName: string, docId: string) {
+  if (isFirestoreQuotaExhausted) return;
   try {
     const docRef = doc(db, collectionName, docId);
     await deleteDoc(docRef);
     console.log(`[Firestore] Document deleted successfully at: ${collectionName}/${docId}`);
   } catch (err) {
-    console.error(`Error deleting document ${collectionName}/${docId}:`, err);
-    throw err;
+    handleFirestoreError(err, `deleteDocument ${collectionName}/${docId}`);
   }
 }
 
 // 6. Synchronize an array list directly to Firestore (supports additions, updates, and deletions atomically)
 export async function saveCollection(collectionName: string, dataArray: any[]) {
+  if (isFirestoreQuotaExhausted) return;
   try {
     const colRef = collection(db, collectionName);
     const snap = await getDocs(colRef);
@@ -213,8 +233,7 @@ export async function saveCollection(collectionName: string, dataArray: any[]) {
     await batch.commit();
     console.log(`[Firestore] Successfully synchronized array collection "${collectionName}" to individual docs.`);
   } catch (err) {
-    console.error(`Error synchronizing collection ${collectionName} array:`, err);
-    throw err;
+    handleFirestoreError(err, `saveCollection ${collectionName}`);
   }
 }
 

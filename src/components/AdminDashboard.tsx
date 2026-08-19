@@ -2064,22 +2064,34 @@ export default function AdminDashboard({
 
                       <div className="relative">
                         <input
-                          type="number"
-                          min="0"
-                          step="1"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           required
-                          value={prodStockQuantity}
+                          value={prodStockQuantity === 0 ? '0' : (prodStockQuantity || '')}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => {
-                            const val = e.target.value;
-                            if (val === '') {
+                            let raw = e.target.value.replace(/[^0-9]/g, '');
+                            if (raw === '') {
                               setProdStockQuantity('');
+                              return;
+                            }
+                            // Strip leading zeroes so typing '5' over '0' becomes '5', not '05'
+                            if (raw.length > 1 && raw.startsWith('0')) {
+                              raw = raw.replace(/^0+/, '');
+                              if (raw === '') raw = '0';
+                            }
+                            setProdStockQuantity(raw);
+                          }}
+                          onBlur={() => {
+                            if (prodStockQuantity === '' || isNaN(Number(prodStockQuantity))) {
+                              setProdStockQuantity(0);
                             } else {
-                              const num = parseInt(val, 10);
-                              setProdStockQuantity(isNaN(num) ? 0 : Math.max(0, num));
+                              setProdStockQuantity(Math.max(0, parseInt(String(prodStockQuantity), 10)));
                             }
                           }}
                           className="w-full bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm font-black font-mono focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue text-right text-slate-900 transition-colors shadow-xs"
-                          placeholder="أدخل عدد القطع المتوفرة في المخزن بلوحة المفاتيح (مثال: 15)"
+                          placeholder="أدخل عدد القطع المتوفرة في المخزن (مثال: 15)"
                         />
                       </div>
                     </div>
@@ -2199,12 +2211,18 @@ export default function AdminDashboard({
                               <td className="p-4">
                                 <div className="flex items-center justify-center">
                                   <input
-                                    type="number"
-                                    min="0"
-                                    step="1"
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
                                     value={stock}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => {
-                                      const val = parseInt(e.target.value, 10);
+                                      let raw = e.target.value.replace(/[^0-9]/g, '');
+                                      if (raw.length > 1 && raw.startsWith('0')) {
+                                        raw = raw.replace(/^0+/, '');
+                                        if (raw === '') raw = '0';
+                                      }
+                                      const val = raw === '' ? 0 : parseInt(raw, 10);
                                       handleSetProductStockDirect(p, isNaN(val) ? 0 : val);
                                     }}
                                     className={`w-24 py-1.5 px-3 text-center text-xs font-black font-mono rounded-xl border focus:outline-none focus:ring-2 focus:ring-brand-blue shadow-xs transition-all ${

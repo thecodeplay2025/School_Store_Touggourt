@@ -56,7 +56,7 @@ export default function ProductCard({
 
         {/* Quick Stock Indicator */}
         {!product.inStock && (
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center">
+          <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center">
             <span className="bg-red-500 text-white font-extrabold text-[10px] sm:text-xs py-1 px-2.5 sm:px-4 rounded-lg sm:rounded-xl">
               نفذت الكمية 😔
             </span>
@@ -65,16 +65,16 @@ export default function ProductCard({
       </div>
 
       {/* Bottom half: Title and Price */}
-      <div className="p-3 sm:p-4 md:p-5 flex flex-col justify-between flex-1">
+      <div className="p-3 sm:p-4 md:p-5 flex flex-col justify-between flex-1 text-right" dir="rtl">
         {/* Title */}
-        <div className="text-right mb-2">
-          <h4 className="text-xs sm:text-sm md:text-base font-extrabold text-slate-800 line-clamp-2 hover:text-brand-blue transition-colors leading-tight min-h-[2rem] sm:min-h-[2.5rem] flex items-center justify-end">
+        <div className="text-right mb-2 w-full">
+          <h4 className="text-xs sm:text-sm md:text-base font-extrabold text-slate-800 line-clamp-2 hover:text-brand-blue transition-colors leading-tight min-h-[2rem] sm:min-h-[2.5rem] text-right w-full">
             {product.name}
           </h4>
         </div>
 
         {/* Pricing & Add to Cart */}
-        <div className="mt-auto pt-2 border-t border-slate-100 flex flex-col gap-2" dir="rtl">
+        <div className="mt-auto pt-2 border-t border-slate-100 flex flex-col gap-2 w-full" dir="rtl">
           <div className="flex items-center justify-between w-full">
             <span className="text-[10px] sm:text-xs font-bold text-slate-400">السعر:</span>
             <span className="text-sm sm:text-base md:text-lg font-black text-emerald-600 whitespace-nowrap">

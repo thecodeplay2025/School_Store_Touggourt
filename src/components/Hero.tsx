@@ -70,7 +70,7 @@ export default function Hero({ onExploreClick, onSelectCategory, siteSettings }:
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="relative rounded-2xl overflow-hidden shadow-xl border border-white/15 max-h-[110px] w-full flex items-center justify-center bg-black/20"
+                className="relative rounded-2xl overflow-hidden max-h-[110px] w-full flex items-center justify-center bg-transparent"
               >
                 <img 
                   src={getCompatibleImageUrl(fullBannerImage)}

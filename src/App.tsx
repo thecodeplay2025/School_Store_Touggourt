@@ -291,10 +291,17 @@ export default function App() {
   // Set of keys that have been successfully loaded from Firestore/server to prevent overwriting with local state on boot
   const loadedKeys = useRef<Set<string>>(new Set());
 
+  // Debounce timers map to prevent write storms on Firestore
+  const saveDebounceTimers = useRef<Record<string, any>>({});
+
   // Helper to save specific state back to the shared database
   const saveToServer = (key: string, data: any) => {
-    saveDoc(key, data)
-      .catch(err => console.error(`Direct Firestore write failed for ${key}:`, err));
+    if (saveDebounceTimers.current[key]) {
+      clearTimeout(saveDebounceTimers.current[key]);
+    }
+    saveDebounceTimers.current[key] = setTimeout(() => {
+      saveDoc(key, data).catch(() => {});
+    }, 600);
   };
 
   // 1. Database Seeding & Initialization on Startup (Direct Firestore Mode)
