@@ -53,7 +53,14 @@ import midadLogo from './assets/images/midad_logo.png';
 
 export default function App() {
   // Database States loaded from localstorage or defaults
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(() => {
+    const saved = localStorage.getItem('school_store_products');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [isProductsLoading, setIsProductsLoading] = useState<boolean>(() => {
+    const saved = localStorage.getItem('school_store_products');
+    return !saved || JSON.parse(saved).length === 0;
+  });
 
   const [categories, setCategories] = useState<Category[]>(() => {
     const saved = localStorage.getItem('school_store_categories');
@@ -340,11 +347,15 @@ export default function App() {
         if (name === 'products') {
           if (Array.isArray(data)) {
             productsLoadedFromFirestore.current = true;
+            setIsProductsLoading(false);
             lastServerData.current['products'] = JSON.stringify(data);
             loadedKeys.current.add('products');
             console.log('[PRODUCT DEBUG] Firestore products loaded:', data);
             console.log('[PRODUCT DEBUG] productsLoadedFromFirestore:', productsLoadedFromFirestore.current);
             setProducts(data);
+            try {
+              localStorage.setItem('school_store_products', JSON.stringify(data));
+            } catch (e) {}
           }
         } else {
           loadedKeys.current.add(name);
@@ -1437,7 +1448,24 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
           </div>
 
           {/* Products Grid */}
-          {filteredProducts.length === 0 ? (
+          {isProductsLoading && products.length === 0 ? (
+            /* Loading Skeleton State */
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-6" dir="rtl">
+              {[...Array(6)].map((_, idx) => (
+                <div key={idx} className="bg-white rounded-3xl border border-slate-100 p-3 sm:p-4 shadow-xs animate-pulse flex flex-col justify-between h-72">
+                  <div className="bg-slate-100 rounded-2xl h-36 w-full mb-3" />
+                  <div className="space-y-2">
+                    <div className="bg-slate-100 h-3.5 rounded-full w-4/5" />
+                    <div className="bg-slate-100 h-2.5 rounded-full w-3/5" />
+                  </div>
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-50 mt-2">
+                    <div className="bg-slate-100 h-4 w-14 rounded-md" />
+                    <div className="bg-slate-100 h-8 w-8 rounded-xl" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredProducts.length === 0 ? (
             /* Empty State */
             <div className="text-center py-16 bg-white rounded-3xl border border-slate-100 p-8 shadow-2xs">
               <div className="bg-slate-50 text-slate-300 p-6 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
