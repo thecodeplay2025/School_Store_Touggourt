@@ -53,10 +53,7 @@ import midadLogo from './assets/images/midad_logo.png';
 
 export default function App() {
   // Database States loaded from localstorage or defaults
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('school_store_products');
-    return saved ? JSON.parse(saved) : PRODUCTS;
-  });
+  const [products, setProducts] = useState<Product[]>([]);
 
   const [categories, setCategories] = useState<Category[]>(() => {
     const saved = localStorage.getItem('school_store_categories');
@@ -281,28 +278,16 @@ export default function App() {
   // Visitors State (backed by server or direct Firestore Client SDK)
   const [visitorsCount, setVisitorsCount] = useState<number>(0);
 
-  // Synchronizers and Server Synchronization
+  // Synchronizers
   const isInitialLoad = useRef(true);
+  const productsLoadedFromFirestore = useRef(false);
   const [useDirectFirestore, setUseDirectFirestore] = useState(true);
   
-  // Cache to track latest data received from Firestore/server to prevent write back loops
+  // Cache to track latest data received from Firestore
   const lastServerData = useRef<Record<string, string>>({});
 
-  // Set of keys that have been successfully loaded from Firestore/server to prevent overwriting with local state on boot
+  // Set of keys that have been successfully loaded from Firestore
   const loadedKeys = useRef<Set<string>>(new Set());
-
-  // Debounce timers map to prevent write storms on Firestore
-  const saveDebounceTimers = useRef<Record<string, any>>({});
-
-  // Helper to save specific state back to the shared database
-  const saveToServer = (key: string, data: any) => {
-    if (saveDebounceTimers.current[key]) {
-      clearTimeout(saveDebounceTimers.current[key]);
-    }
-    saveDebounceTimers.current[key] = setTimeout(() => {
-      saveDoc(key, data).catch(() => {});
-    }, 600);
-  };
 
   // 1. Database Seeding & Initialization on Startup (Direct Firestore Mode)
   useEffect(() => {
@@ -352,10 +337,21 @@ export default function App() {
 
     collectionsToSubscribe.forEach(({ name, setter }) => {
       const unsub = subscribeCollection(name, (data) => {
-        loadedKeys.current.add(name);
-        if (data) {
-          lastServerData.current[name] = JSON.stringify(data);
-          setter(data);
+        if (name === 'products') {
+          if (Array.isArray(data)) {
+            productsLoadedFromFirestore.current = true;
+            lastServerData.current['products'] = JSON.stringify(data);
+            loadedKeys.current.add('products');
+            console.log('[PRODUCT DEBUG] Firestore products loaded:', data);
+            console.log('[PRODUCT DEBUG] productsLoadedFromFirestore:', productsLoadedFromFirestore.current);
+            setProducts(data);
+          }
+        } else {
+          loadedKeys.current.add(name);
+          if (data) {
+            lastServerData.current[name] = JSON.stringify(data);
+            setter(data);
+          }
         }
       });
       unsubscribers.push(unsub);
@@ -517,100 +513,10 @@ export default function App() {
   }, [useDirectFirestore]);
 
 
-  // Sync to LocalStorage & Server on State Changes
-  useEffect(() => {
-    localStorage.setItem('school_store_products', JSON.stringify(products));
-    if (!isInitialLoad.current && loadedKeys.current.has('products')) {
-      const stringified = JSON.stringify(products);
-      if (lastServerData.current['products'] !== stringified) {
-        lastServerData.current['products'] = stringified;
-        saveToServer('products', products);
-      }
-    }
-  }, [products]);
-
-  useEffect(() => {
-    localStorage.setItem('school_store_categories', JSON.stringify(categories));
-    if (!isInitialLoad.current && loadedKeys.current.has('categories')) {
-      const stringified = JSON.stringify(categories);
-      if (lastServerData.current['categories'] !== stringified) {
-        lastServerData.current['categories'] = stringified;
-        saveToServer('categories', categories);
-      }
-    }
-  }, [categories]);
-
-  useEffect(() => {
-    localStorage.setItem('school_store_municipalities', JSON.stringify(municipalities));
-    if (!isInitialLoad.current && loadedKeys.current.has('municipalities')) {
-      const stringified = JSON.stringify(municipalities);
-      if (lastServerData.current['municipalities'] !== stringified) {
-        lastServerData.current['municipalities'] = stringified;
-        saveToServer('municipalities', municipalities);
-      }
-    }
-  }, [municipalities]);
-
+  // Persist current logged in user session locally
   useEffect(() => {
     localStorage.setItem('school_store_current_user', JSON.stringify(currentUser));
   }, [currentUser]);
-
-  useEffect(() => {
-    localStorage.setItem('school_store_users', JSON.stringify(allUsers));
-    if (!isInitialLoad.current && loadedKeys.current.has('users')) {
-      const stringified = JSON.stringify(allUsers);
-      if (lastServerData.current['users'] !== stringified) {
-        lastServerData.current['users'] = stringified;
-        saveToServer('users', allUsers);
-      }
-    }
-  }, [allUsers]);
-
-  useEffect(() => {
-    localStorage.setItem('school_store_affiliates', JSON.stringify(affiliates));
-    if (!isInitialLoad.current && loadedKeys.current.has('affiliates')) {
-      const stringified = JSON.stringify(affiliates);
-      if (lastServerData.current['affiliates'] !== stringified) {
-        lastServerData.current['affiliates'] = stringified;
-        saveToServer('affiliates', affiliates);
-      }
-    }
-  }, [affiliates]);
-
-  useEffect(() => {
-    localStorage.setItem('school_store_reviews', JSON.stringify(reviews));
-    if (!isInitialLoad.current && loadedKeys.current.has('reviews')) {
-      const stringified = JSON.stringify(reviews);
-      if (lastServerData.current['reviews'] !== stringified) {
-        lastServerData.current['reviews'] = stringified;
-        saveToServer('reviews', reviews);
-      }
-    }
-  }, [reviews]);
-
-  useEffect(() => {
-    localStorage.setItem('school_store_settings', JSON.stringify(siteSettings));
-    if (!isInitialLoad.current && (loadedKeys.current.has('settings') || loadedKeys.current.has('siteSettings'))) {
-      const stringified = JSON.stringify(siteSettings);
-      if (lastServerData.current['settings'] !== stringified || lastServerData.current['siteSettings'] !== stringified) {
-        saveToServer('settings', siteSettings);
-        saveToServer('siteSettings', siteSettings);
-        lastServerData.current['settings'] = stringified;
-        lastServerData.current['siteSettings'] = stringified;
-      }
-    }
-  }, [siteSettings]);
-
-  useEffect(() => {
-    localStorage.setItem('school_store_packs', JSON.stringify(packs));
-    if (!isInitialLoad.current && loadedKeys.current.has('packs')) {
-      const stringified = JSON.stringify(packs);
-      if (lastServerData.current['packs'] !== stringified) {
-        lastServerData.current['packs'] = stringified;
-        saveToServer('packs', packs);
-      }
-    }
-  }, [packs]);
 
 
 
@@ -670,17 +576,6 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('school_store_orders', JSON.stringify(recentOrders));
-    if (loadedKeys.current.has('orders')) {
-      console.warn(`[SYNC TRACE] recentOrders effect evaluated. isInitialLoad: ${isInitialLoad.current}, hasLoadedOrdersKey: ${loadedKeys.current.has('orders')}, current state length:`, recentOrders.length);
-    }
-    if (!isInitialLoad.current && loadedKeys.current.has('orders')) {
-      const stringified = JSON.stringify(recentOrders);
-      if (lastServerData.current['orders'] !== stringified) {
-        console.warn(`[SYNC TRACE] MISMATCH DETECTED! lastServerData:`, lastServerData.current['orders'], `vs current state:`, stringified);
-        lastServerData.current['orders'] = stringified;
-        saveToServer('orders', recentOrders);
-      }
-    }
   }, [recentOrders]);
 
   // Show dynamic toast helper
@@ -1130,7 +1025,7 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
         visitorsCount={visitorsCount}
         onUpdateVisitorsCount={(newCount) => {
           setVisitorsCount(newCount);
-          saveToServer('visitors', { count: newCount });
+          saveDocument('visitors', 'stats', { count: newCount });
         }}
         onUpdatePacks={setPacks}
         onUpdateProducts={(updatedProducts) => {
@@ -1665,6 +1560,8 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
             }}
             onUpdateUser={(updatedUser) => {
               setCurrentUser(updatedUser);
+              const userId = updatedUser.id || updatedUser.email.replace(/[^a-zA-Z0-9]/g, '_');
+              saveDocument('users', userId, updatedUser);
               setAllUsers(prev => prev.map(u => u.email === updatedUser.email ? updatedUser : u));
               showToast('تم تحديث بيانات ملفك الشخصي بنجاح!', 'success');
             }}

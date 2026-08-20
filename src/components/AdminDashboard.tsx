@@ -45,7 +45,7 @@ import { convertGoogleDriveUrl, getCompatibleImageUrl } from '../utils/imageHelp
 import { getProductStock, getStockStatusInfo, isProductAvailable } from '../utils/stockHelper';
 import { ImageUploaderWithCompression } from './ImageUploaderWithCompression';
 import { FirebaseStorageCard } from './FirebaseStorageCard';
-import { updateOrderStatusAtomic } from '../lib/firebase';
+import { updateOrderStatusAtomic, saveDocument, deleteDocument } from '../lib/firebase';
 import {
   ResponsiveContainer,
   LineChart,
@@ -673,7 +673,7 @@ export default function AdminDashboard({
   // Save Settings
   const handleSettingsSave = (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdateSiteSettings({
+    const newSettings: SiteSettings = {
       storeName: setStoreName,
       storeDescription: setStoreDesc,
       contactPhone1: setPhone1,
@@ -695,7 +695,9 @@ export default function AdminDashboard({
       heroCard2Title: setHeroCard2Title,
       heroCard2Price: setHeroCard2Price,
       heroBannerImage: setHeroBannerImage || undefined,
-    });
+    };
+    saveDocument('settings', 'siteSettings', newSettings);
+    onUpdateSiteSettings(newSettings);
     triggerNoti('تم حفظ إعدادات الموقع والبانر بنجاح!');
   };
 
@@ -726,8 +728,8 @@ export default function AdminDashboard({
 
     if (editingProduct) {
       // Edit
-      const updated = products.map(p => p.id === editingProduct.id ? {
-        ...p,
+      const updatedProduct: Product = {
+        ...editingProduct,
         name: prodName,
         description: prodDesc,
         price: parsedPrice,
@@ -740,7 +742,13 @@ export default function AdminDashboard({
         features: featuresList,
         inStock: computedInStock,
         isPopular: prodIsPopular
-      } : p);
+      };
+
+      // Save directly to Firestore
+      console.log('[PRODUCT DEBUG] Updating product in Firestore:', editingProduct.id, updatedProduct);
+      saveDocument('products', editingProduct.id, updatedProduct);
+
+      const updated = products.map(p => p.id === editingProduct.id ? updatedProduct : p);
       onUpdateProducts(updated);
       setEditingProduct(null);
       triggerNoti('تم تعديل بيانات ومخزون المنتج بنجاح');
@@ -762,6 +770,12 @@ export default function AdminDashboard({
         inStock: computedInStock,
         isPopular: prodIsPopular
       };
+
+      // Save directly to Firestore
+      console.log('[PRODUCT DEBUG] Creating/Saving new product in Firestore:', newProd.id, newProd);
+      saveDocument('products', newProd.id, newProd);
+
+      console.log('[PRODUCT DEBUG] Calling onUpdateProducts with new product');
       onUpdateProducts([newProd, ...products]);
       setIsAddingProduct(false);
       triggerNoti('تمت إضافة المنتج الجديد وتحديث المخزون بنجاح!');
@@ -824,12 +838,14 @@ export default function AdminDashboard({
   const handleSetProductStockDirect = (p: Product, newStockValue: number) => {
     const numericStock = Math.max(0, isNaN(newStockValue) ? 0 : Math.floor(newStockValue));
     const inStock = numericStock > 0;
-    const updated = products.map(item => item.id === p.id ? {
-      ...item,
+    const updatedProd: Product = {
+      ...p,
       stock: numericStock,
       stockQuantity: numericStock,
       inStock: inStock
-    } : item);
+    };
+    saveDocument('products', p.id, updatedProd);
+    const updated = products.map(item => item.id === p.id ? updatedProd : item);
     onUpdateProducts(updated);
   };
 
@@ -838,12 +854,14 @@ export default function AdminDashboard({
     const currentStock = getProductStock(p);
     const newStock = Math.max(0, currentStock + delta);
     const inStock = newStock > 0;
-    const updated = products.map(item => item.id === p.id ? {
-      ...item,
+    const updatedProd: Product = {
+      ...p,
       stock: newStock,
       stockQuantity: newStock,
       inStock: inStock
-    } : item);
+    };
+    saveDocument('products', p.id, updatedProd);
+    const updated = products.map(item => item.id === p.id ? updatedProd : item);
     onUpdateProducts(updated);
   };
 
@@ -852,12 +870,14 @@ export default function AdminDashboard({
     const currentStock = getProductStock(p);
     const nextInStock = !p.inStock;
     const nextStock = nextInStock ? (currentStock > 0 ? currentStock : 10) : 0;
-    const updated = products.map(item => item.id === p.id ? { 
-      ...item, 
+    const updatedProd: Product = { 
+      ...p, 
       inStock: nextInStock,
       stock: nextStock,
       stockQuantity: nextStock
-    } : item);
+    };
+    saveDocument('products', p.id, updatedProd);
+    const updated = products.map(item => item.id === p.id ? updatedProd : item);
     onUpdateProducts(updated);
     triggerNoti(`تم تغيير حالة توفر المنتج: ${p.name}`);
   };
@@ -964,10 +984,12 @@ export default function AdminDashboard({
     if (!deleteConfirm) return;
     const { id, type } = deleteConfirm;
     if (type === 'product') {
+      deleteDocument('products', id);
       const updated = products.filter(p => p.id !== id);
       onUpdateProducts(updated);
       triggerNoti('تم حذف المنتج بنجاح');
     } else if (type === 'order') {
+      deleteDocument('orders', id);
       const updated = orders.filter(o => o.id !== id);
       onUpdateOrders(updated);
       triggerNoti(`تم حذف الطلبية رقم ${id} بنجاح`);
@@ -975,10 +997,12 @@ export default function AdminDashboard({
         setSelectedOrder(null);
       }
     } else if (type === 'all_orders') {
+      orders.forEach(o => deleteDocument('orders', o.id));
       onUpdateOrders([]);
       setSelectedOrder(null);
       triggerNoti('تم حذف جميع الطلبيات نهائياً بنجاح');
     } else if (type === 'pack') {
+      deleteDocument('packs', id);
       const updated = packs.filter(p => p.id !== id);
       onUpdatePacks(updated);
       triggerNoti('تم حذف الباك بنجاح');
@@ -986,10 +1010,12 @@ export default function AdminDashboard({
       onUpdateVisitorsCount(0);
       triggerNoti('تم تصفير عدد زوار الموقع بنجاح');
     } else if (type === 'category') {
+      deleteDocument('categories', id);
       const updated = categories.filter(c => c.id !== id);
       onUpdateCategories(updated);
       triggerNoti('تم حذف التصنيف بنجاح');
     } else if (type === 'affiliate') {
+      deleteDocument('affiliates', id);
       const updated = affiliates.filter(a => a.id !== id);
       onUpdateAffiliates(updated);
       triggerNoti('تم حذف المسوق بالعمولة بنجاح');
@@ -1032,8 +1058,8 @@ export default function AdminDashboard({
 
     if (editingPack) {
       // Edit mode
-      const updated = packs.map(p => p.id === editingPack.id ? {
-        ...p,
+      const updatedPack: Product = {
+        ...editingPack,
         name: packName.trim(),
         description: packDesc.trim(),
         price: Number(packPrice),
@@ -1043,7 +1069,9 @@ export default function AdminDashboard({
         isPopular: packIsPopular,
         packItems: packItemsList,
         features: featuresArray,
-      } : p);
+      };
+      saveDocument('packs', editingPack.id, updatedPack);
+      const updated = packs.map(p => p.id === editingPack.id ? updatedPack : p);
       onUpdatePacks(updated);
       setEditingPack(null);
       setIsAddingPack(false);
@@ -1065,6 +1093,7 @@ export default function AdminDashboard({
         isPack: true,
         packItems: packItemsList
       };
+      saveDocument('packs', newPack.id, newPack);
       onUpdatePacks([...packs, newPack]);
       setIsAddingPack(false);
       triggerNoti('تمت إضافة الباك الجديد بنجاح!');
@@ -1177,13 +1206,15 @@ export default function AdminDashboard({
   const handleCategorySave = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingCategory) {
-      const updated = categories.map(c => c.id === editingCategory.id ? {
-        ...c,
+      const updatedCat: Category = {
+        ...editingCategory,
         name: catName,
         image: catImage || 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&q=80&w=600',
         iconName: catIcon,
-        count: products.filter(p => p.category === c.id).length
-      } : c);
+        count: products.filter(p => p.category === editingCategory.id).length
+      };
+      saveDocument('categories', editingCategory.id, updatedCat);
+      const updated = categories.map(c => c.id === editingCategory.id ? updatedCat : c);
       onUpdateCategories(updated);
       setEditingCategory(null);
       setCatName('');
@@ -1209,7 +1240,7 @@ export default function AdminDashboard({
         count: 0,
         colorClass: 'bg-brand-blue/10 border-brand-blue text-brand-blue'
       };
-
+      saveDocument('categories', newCat.id, newCat);
       onUpdateCategories([...categories, newCat]);
       setIsAddingCategory(false);
       setCatName('');
@@ -1241,12 +1272,15 @@ export default function AdminDashboard({
   const handleMuniSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingMuni) {
-      const updated = municipalities.map(m => m.name === editingMuni.name ? {
-        ...m,
+      const updatedMuni: Municipality = {
+        ...editingMuni,
         shippingFee: muniFee,
         deliveryTime: muniTime,
         available: muniAvailable
-      } : m);
+      };
+      const muniDocId = editingMuni.name.replace(/[\s\(\)]/g, "_");
+      saveDocument('municipalities', muniDocId, updatedMuni);
+      const updated = municipalities.map(m => m.name === editingMuni.name ? updatedMuni : m);
       onUpdateMunicipalities(updated);
       setEditingMuni(null);
       triggerNoti('تم حفظ رسوم الشحن وحالة التوفر المحدثة للبلدية بنجاح');
@@ -1255,6 +1289,11 @@ export default function AdminDashboard({
 
   // Review Status Update
   const handleReviewStatus = (reviewId: string, status: Review['status']) => {
+    const rev = reviews.find(r => r.id === reviewId);
+    if (rev) {
+      const updatedRev = { ...rev, status };
+      saveDocument('reviews', reviewId, updatedRev);
+    }
     const updated = reviews.map(r => r.id === reviewId ? { ...r, status } : r);
     onUpdateReviews(updated);
     triggerNoti(`تم تحديث تقييم المنتج وتعديل عرضه`);
@@ -3543,12 +3582,14 @@ export default function AdminDashboard({
                       triggerNoti('رمز الإحالة هذا مستخدم بالفعل لمسوّق آخر!', 'info');
                       return;
                     }
-                    updatedList = affiliates.map(a => a.id === editingAffiliate.id ? {
-                      ...a,
+                    const updatedAff: Affiliate = {
+                      ...editingAffiliate,
                       code: cleanCode,
                       name: affiliateName.trim(),
                       commissionRate: rateVal
-                    } : a);
+                    };
+                    saveDocument('affiliates', editingAffiliate.id, updatedAff);
+                    updatedList = affiliates.map(a => a.id === editingAffiliate.id ? updatedAff : a);
                     triggerNoti('تم تعديل بيانات المسوّق بنجاح');
                   } else {
                     const isDup = affiliates.some(a => a.code.toUpperCase() === cleanCode);
@@ -3566,6 +3607,7 @@ export default function AdminDashboard({
                       createdAt: new Date().toLocaleDateString('ar-DZ', { year: 'numeric', month: 'long', day: 'numeric' }),
                       commissionRate: rateVal
                     };
+                    saveDocument('affiliates', newAff.id, newAff);
                     updatedList.push(newAff);
                     triggerNoti('تم تسجيل المسوّق الجديد بنجاح');
                   }

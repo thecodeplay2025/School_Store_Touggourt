@@ -79,6 +79,7 @@ export async function initializeCollectionsIfEmpty() {
 
     // Seed products
     const productsSnap = await getDocs(collection(db, "products"));
+    console.log(`[PRODUCT DEBUG] initializeCollectionsIfEmpty - products collection size: ${productsSnap.size}, empty: ${productsSnap.empty}`);
     if (productsSnap.empty) {
       console.log("[Firestore Seeder] Seeding default products...");
       const batch = writeBatch(db);
@@ -142,11 +143,18 @@ export async function initializeCollectionsIfEmpty() {
 // 2. Collection Listeners & Subscription
 export function subscribeCollection(collectionName: string, callback: (data: any[]) => void) {
   try {
+    console.log(`[PRODUCT DEBUG] subscribeCollection initiated for: "${collectionName}"`);
     const colRef = collection(db, collectionName);
     return onSnapshot(colRef, (snap) => {
+      console.log(`[PRODUCT DEBUG] onSnapshot fired for: "${collectionName}", docs count: ${snap.docs.length}`);
       const items: any[] = [];
       snap.forEach(doc => {
         items.push({ id: doc.id, ...doc.data() });
+      });
+      console.log('[FIRESTORE SNAPSHOT]', {
+        collection: collectionName,
+        count: Array.isArray(items) ? items.length : null,
+        timestamp: Date.now()
       });
       callback(items);
     }, (err) => {
@@ -163,6 +171,11 @@ export function subscribeDoc(collectionName: string, docId: string, callback: (d
   try {
     const docRef = doc(db, collectionName, docId);
     return onSnapshot(docRef, (snap) => {
+      console.log('[FIRESTORE SNAPSHOT]', {
+        collection: `${collectionName}/${docId}`,
+        count: snap.exists() ? 1 : 0,
+        timestamp: Date.now()
+      });
       if (snap.exists()) {
         callback(snap.data());
       } else {
@@ -181,6 +194,11 @@ export function subscribeDoc(collectionName: string, docId: string, callback: (d
 export async function saveDocument(collectionName: string, docId: string, data: any) {
   if (isFirestoreQuotaExhausted) return;
   try {
+    console.log('[FIRESTORE saveDocument]', {
+      collectionName,
+      docId,
+      timestamp: Date.now()
+    });
     const docRef = doc(db, collectionName, docId);
     const sanitized = sanitizeData(data);
     await setDoc(docRef, sanitized || {}, { merge: true });
@@ -206,6 +224,11 @@ export async function deleteDocument(collectionName: string, docId: string) {
 export async function saveCollection(collectionName: string, dataArray: any[]) {
   if (isFirestoreQuotaExhausted) return;
   try {
+    console.log('[FIRESTORE saveCollection]', {
+      collectionName,
+      count: dataArray.length,
+      timestamp: Date.now()
+    });
     const colRef = collection(db, collectionName);
     const snap = await getDocs(colRef);
     const existingIds = snap.docs.map(doc => doc.id);
@@ -389,12 +412,49 @@ export async function deductProductsStock(orderedItems: { productId: string; qua
   }
 }
 
+// 10. Save products array using batch merge WITHOUT deleting missing docs
+export async function saveProducts(products: any[]) {
+  if (isFirestoreQuotaExhausted) return;
+  try {
+    console.log('[FIRESTORE saveProducts]', {
+      count: products.length,
+      ids: products.map((p: any) => p.id),
+      timestamp: Date.now()
+    });
+    const batch = writeBatch(db);
+
+    products.forEach((product) => {
+      const productId = String(product?.id || '').trim();
+      if (!productId) return;
+
+      const productRef = doc(db, 'products', productId);
+      batch.set(
+        productRef,
+        sanitizeData(product),
+        { merge: true }
+      );
+    });
+
+    if (products.length > 0) {
+      await batch.commit();
+    }
+
+    console.log(`[Firestore] Successfully saved ${products.length} products.`);
+  } catch (err) {
+    console.error('[Firestore] Error saving products:', err);
+    handleFirestoreError(err, 'saveProducts');
+    throw err;
+  }
+}
+
 // Backwards-compatible legacy wrappers
 export async function saveDoc(key: string, data: any) {
   if (key === 'settings' || key === 'siteSettings') {
     await saveDocument('settings', 'siteSettings', data);
   } else if (key === 'visitors') {
     await saveDocument('visitors', 'stats', data);
+  } else if (key === 'products' && Array.isArray(data)) {
+    await saveProducts(data);
   } else if (Array.isArray(data)) {
     await saveCollection(key, data);
   } else {
