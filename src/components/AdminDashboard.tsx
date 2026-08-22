@@ -38,7 +38,10 @@ import {
   Cpu,
   ChevronDown,
   ChevronUp,
-  ArrowRight
+  ArrowRight,
+  Megaphone,
+  Gift,
+  Bell
 } from 'lucide-react';
 import { Product, Category, Municipality, Order, User, Review, SiteSettings, Affiliate } from '../types';
 import { convertGoogleDriveUrl, getCompatibleImageUrl } from '../utils/imageHelper';
@@ -252,7 +255,12 @@ export default function AdminDashboard({
   const [setPhone2, setSetPhone2] = useState(siteSettings.contactPhone2);
   const [setWarehouse, setSetWarehouse] = useState(siteSettings.warehouseAddress);
   const [setThreshold, setSetThreshold] = useState(siteSettings.freeShippingThreshold);
-  const [setBannerText, setSetBannerText] = useState(siteSettings.promoBannerText);
+  const [setBannerText, setSetBannerText] = useState(siteSettings.promoBannerText || 'توصيل مجاني بالكامل لكافة بلديات ولاية توقرت 🚚🎁');
+  const [setShowTopBanner, setSetShowTopBanner] = useState(siteSettings.showTopBanner ?? true);
+  const [setTopBannerBgColor, setSetTopBannerBgColor] = useState(siteSettings.topBannerBgColor || '#0284c7');
+  const [setTopBannerTextColor, setSetTopBannerTextColor] = useState(siteSettings.topBannerTextColor || '#ffffff');
+  const [setTopBannerIcon, setSetTopBannerIcon] = useState<'sparkles' | 'truck' | 'bell' | 'tag' | 'gift' | 'megaphone' | 'none'>(siteSettings.topBannerIcon || 'sparkles');
+  const [setTopBannerDismissible, setSetTopBannerDismissible] = useState(siteSettings.topBannerDismissible ?? true);
   const [setLogoUrl, setSetLogoUrl] = useState(siteSettings.logoUrl || '');
   const [setCommissionRate, setSetCommissionRate] = useState(siteSettings.referralCommissionRate || 10);
 
@@ -681,6 +689,11 @@ export default function AdminDashboard({
       warehouseAddress: setWarehouse,
       freeShippingThreshold: setThreshold,
       promoBannerText: setBannerText,
+      showTopBanner: setShowTopBanner,
+      topBannerBgColor: setTopBannerBgColor,
+      topBannerTextColor: setTopBannerTextColor,
+      topBannerIcon: setTopBannerIcon,
+      topBannerDismissible: setTopBannerDismissible,
       logoUrl: setLogoUrl || undefined,
       referralCommissionRate: Number(setCommissionRate),
       heroBadge: setHeroBadge,
@@ -717,9 +730,24 @@ export default function AdminDashboard({
 
   const handleProductSave = (e: React.FormEvent) => {
     e.preventDefault();
-    const featuresList = prodFeatures.split(',').map(f => f.trim()).filter(Boolean);
 
-    const finalImage = convertGoogleDriveUrl(prodImage) || 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&q=80&w=600';
+    if (!prodName.trim()) {
+      triggerNoti('يرجى إدخال اسم المنتج', 'info');
+      return;
+    }
+
+    if (!prodImage || !prodImage.trim()) {
+      triggerNoti('إدخال صورة المنتج إجباري! يرجى رفع صورة أو إدخال رابط صالح للمتابعة ⚠️', 'info');
+      return;
+    }
+
+    const finalImage = convertGoogleDriveUrl(prodImage);
+    if (!finalImage || !finalImage.trim()) {
+      triggerNoti('إدخال صورة المنتج إجباري! يرجى رفع صورة أو إدخال رابط صالح للمتابعة ⚠️', 'info');
+      return;
+    }
+
+    const featuresList = prodFeatures.split(',').map(f => f.trim()).filter(Boolean);
 
     const parsedPrice = parseFloat(String(prodPrice).replace(',', '.')) || 0;
     const parsedPurchasePrice = parseFloat(String(prodPurchasePrice).replace(',', '.')) || 0;
@@ -2152,7 +2180,8 @@ export default function AdminDashboard({
                       imageUrl={prodImage}
                       onImageChange={(url) => setProdImage(url)}
                       placement="product"
-                      label="صورة المنتج (رابط أو رفع ملف من عندك مع الضغط والقص التلقائي)"
+                      label="صورة المنتج (رابط أو رفع ملف من جهازك مع الضغط والقص التلقائي)"
+                      required={true}
                       triggerNotification={triggerNoti}
                     />
                   </div>
@@ -2860,15 +2889,249 @@ export default function AdminDashboard({
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-600">شريط الإعلان المتحرك</label>
-                <input
-                  type="text"
-                  required
-                  value={setBannerText}
-                  onChange={(e) => setSetBannerText(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-semibold text-slate-900 focus:bg-white focus:border-brand-blue text-right"
-                />
+              {/* Dedicated Section: TOP ANNOUNCEMENT BANNER (الشريط الأزرق بأعلى الموقع) */}
+              <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/40 to-sky-50/70 border border-blue-200/80 rounded-3xl p-5 sm:p-6 space-y-5 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-blue-200/60 pb-4">
+                  <div>
+                    <h4 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
+                      <Megaphone className="h-4 w-4 text-brand-blue" />
+                      <span>📢 التحكم بالشريط الإعلاني العلوي (أول شريط بأعلى الموقع)</span>
+                    </h4>
+                    <p className="text-xs text-slate-600 mt-1 font-semibold">
+                      تحكم بظهور الشريط، النص الإعلاني، لونه، وأيقونته التي تظهر لجميع زوار المتجر فور فتح الموقع.
+                    </p>
+                  </div>
+
+                  {/* On/Off Switch */}
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none bg-white px-4 py-2 rounded-2xl border border-blue-200 shadow-xs hover:border-brand-blue transition-colors self-start sm:self-auto">
+                    <input
+                      type="checkbox"
+                      checked={setShowTopBanner}
+                      onChange={(e) => setSetShowTopBanner(e.target.checked)}
+                      className="w-4 h-4 text-brand-blue bg-white border-slate-300 rounded focus:ring-brand-blue cursor-pointer"
+                    />
+                    <span className={`text-xs font-black ${setShowTopBanner ? 'text-emerald-700' : 'text-slate-500'}`}>
+                      {setShowTopBanner ? '✓ الشريط مفعّل وظاهر' : '✕ الشريط مخفي وموقوف'}
+                    </span>
+                  </label>
+                </div>
+
+                {/* Live Interactive Preview */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-600">
+                    <span>👁️ معاينة حية ومباشرة للشريط كما يظهر لزوار المتجر:</span>
+                    <span className="text-[10px] text-slate-400">تحديث فوري</span>
+                  </div>
+                  {setShowTopBanner ? (
+                    <div 
+                      className="py-2 px-4 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-2 relative transition-all shadow-xs border border-black/10 overflow-hidden"
+                      style={{
+                        backgroundColor: setTopBannerBgColor,
+                        color: setTopBannerTextColor
+                      }}
+                    >
+                      {setTopBannerIcon !== 'none' && (
+                        <span className="shrink-0">
+                          {setTopBannerIcon === 'truck' ? (
+                            <Truck className="h-4 w-4 text-amber-300 animate-bounce" />
+                          ) : setTopBannerIcon === 'bell' ? (
+                            <Bell className="h-4 w-4 text-amber-300 animate-pulse" />
+                          ) : setTopBannerIcon === 'gift' ? (
+                            <Gift className="h-4 w-4 text-amber-300 animate-pulse" />
+                          ) : setTopBannerIcon === 'megaphone' ? (
+                            <Megaphone className="h-4 w-4 text-amber-300 animate-pulse" />
+                          ) : setTopBannerIcon === 'tag' ? (
+                            <Tag className="h-4 w-4 text-amber-300 animate-pulse" />
+                          ) : (
+                            <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
+                          )}
+                        </span>
+                      )}
+                      <span className="truncate">{setBannerText || 'نص الإعلان سيظهر هنا...'}</span>
+                      {setTopBannerDismissible && (
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full bg-black/10 text-white/80 opacity-60">
+                          <X className="h-3 w-3" />
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="py-2.5 px-4 rounded-xl text-xs font-bold text-center bg-slate-100 text-slate-400 border border-dashed border-slate-300">
+                      الشريط معطّل حالياً ولن يظهر للمستخدمين عند فتح الموقع
+                    </div>
+                  )}
+                </div>
+
+                {setShowTopBanner && (
+                  <div className="space-y-4 pt-2">
+                    {/* Announcement Text */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-slate-700">نص الإعلان أو العرض</label>
+                      <input
+                        type="text"
+                        value={setBannerText}
+                        onChange={(e) => setSetBannerText(e.target.value)}
+                        placeholder="اكتب نص الإعلان الترويجي هنا..."
+                        className="w-full bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-bold text-slate-900 focus:border-brand-blue text-right shadow-xs"
+                      />
+                      
+                      {/* Quick Text Suggestions */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <span className="text-[10px] font-bold text-slate-500">نماذج جاهزة سريعة:</span>
+                        <button
+                          type="button"
+                          onClick={() => setSetBannerText('توصيل مجاني بالكامل لكافة بلديات ولاية توقرت 🚚🎁')}
+                          className="text-[10px] font-bold bg-white text-slate-700 hover:text-brand-blue px-2.5 py-1 rounded-lg border border-slate-200 hover:border-brand-blue shadow-2xs transition-colors"
+                        >
+                          🚚 توصيل مجاني توقرت
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSetBannerText('🔥 تخفيضات كبرى بمناسبة الدخول المدرسي تصل إلى 30% ✨')}
+                          className="text-[10px] font-bold bg-white text-slate-700 hover:text-brand-blue px-2.5 py-1 rounded-lg border border-slate-200 hover:border-brand-blue shadow-2xs transition-colors"
+                        >
+                          🔥 تخفيضات الدخول المدرسي
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSetBannerText('🎒 تشكيلة جديدة من الحقائب والآلات الحاسبة متوفرة الآن مع الدفع عند الاستلام 🇩🇿')}
+                          className="text-[10px] font-bold bg-white text-slate-700 hover:text-brand-blue px-2.5 py-1 rounded-lg border border-slate-200 hover:border-brand-blue shadow-2xs transition-colors"
+                        >
+                          🎒 سلع جديدة + دفع عند الاستلام
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSetBannerText('⭐ عروض حصرية لفترة محدودة على باقات وأدوات التفوق الدراسي 📚')}
+                          className="text-[10px] font-bold bg-white text-slate-700 hover:text-brand-blue px-2.5 py-1 rounded-lg border border-slate-200 hover:border-brand-blue shadow-2xs transition-colors"
+                        >
+                          ⭐ عروض الباقات المدرسية
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Color & Icon Settings Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+                      {/* Background Color */}
+                      <div className="space-y-2 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                        <label className="block text-xs font-bold text-slate-700">لون خلفية الشريط</label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={setTopBannerBgColor.startsWith('#') ? setTopBannerBgColor : '#0284c7'}
+                            onChange={(e) => setSetTopBannerBgColor(e.target.value)}
+                            className="w-9 h-9 rounded-lg border border-slate-300 bg-white cursor-pointer shrink-0"
+                          />
+                          <input
+                            type="text"
+                            value={setTopBannerBgColor}
+                            onChange={(e) => setSetTopBannerBgColor(e.target.value)}
+                            placeholder="#0284c7"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-2.5 text-xs font-mono font-bold text-slate-900 text-center"
+                          />
+                        </div>
+                        {/* Quick Color Presets */}
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {[
+                            { name: 'أزرق (الافتراضي)', color: '#0284c7' },
+                            { name: 'كحلي فاخر', color: '#1e3a8a' },
+                            { name: 'أخضر زمردي', color: '#059669' },
+                            { name: 'أحمر تخفيضات', color: '#dc2626' },
+                            { name: 'بنفسجي ملكي', color: '#7c3aed' },
+                            { name: 'برتقالي مشرق', color: '#ea580c' },
+                            { name: 'أسود أنيق', color: '#0f172a' },
+                          ].map((p) => (
+                            <button
+                              key={p.color}
+                              type="button"
+                              onClick={() => setSetTopBannerBgColor(p.color)}
+                              className="w-6 h-6 rounded-md border border-slate-300 shadow-2xs transition-transform hover:scale-110"
+                              style={{ backgroundColor: p.color }}
+                              title={p.name}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Icon Selection */}
+                      <div className="space-y-2 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                        <label className="block text-xs font-bold text-slate-700">أيقونة الشريط الإعلاني</label>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {[
+                            { id: 'sparkles', label: 'شرارات ✨', icon: Sparkles },
+                            { id: 'truck', label: 'شاحنة 🚚', icon: Truck },
+                            { id: 'bell', label: 'جرس 🔔', icon: Bell },
+                            { id: 'gift', label: 'هدية 🎁', icon: Gift },
+                            { id: 'megaphone', label: 'بوق 📢', icon: Megaphone },
+                            { id: 'tag', label: 'خصم 🏷️', icon: Tag },
+                            { id: 'none', label: 'بدون أيقونة', icon: X },
+                          ].map((ic) => {
+                            const isSelected = setTopBannerIcon === ic.id;
+                            const IconComponent = ic.icon;
+                            return (
+                              <button
+                                key={ic.id}
+                                type="button"
+                                onClick={() => setSetTopBannerIcon(ic.id as any)}
+                                className={`flex flex-col items-center justify-center p-2 rounded-xl text-[10px] font-bold border transition-all ${
+                                  isSelected 
+                                    ? 'bg-brand-blue text-white border-brand-blue shadow-2xs' 
+                                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                <IconComponent className="h-3.5 w-3.5 mb-0.5" />
+                                <span className="truncate max-w-[50px]">{ic.label.split(' ')[0]}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Visitor Dismissal & Text Color */}
+                      <div className="space-y-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-bold text-slate-700">لون خط النص</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={setTopBannerTextColor.startsWith('#') ? setTopBannerTextColor : '#ffffff'}
+                              onChange={(e) => setSetTopBannerTextColor(e.target.value)}
+                              className="w-8 h-8 rounded-lg border border-slate-300 bg-white cursor-pointer shrink-0"
+                            />
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setSetTopBannerTextColor('#ffffff')}
+                                className="px-2 py-1 text-[10px] font-bold bg-slate-900 text-white rounded-md"
+                              >
+                                أبيض
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSetTopBannerTextColor('#fef08a')}
+                                className="px-2 py-1 text-[10px] font-bold bg-amber-200 text-slate-900 rounded-md"
+                              >
+                                أصفر
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-1 border-t border-slate-100">
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={setTopBannerDismissible}
+                              onChange={(e) => setSetTopBannerDismissible(e.target.checked)}
+                              className="w-3.5 h-3.5 text-brand-blue bg-white border-slate-300 rounded focus:ring-brand-blue cursor-pointer"
+                            />
+                            <span className="text-[11px] font-bold text-slate-700">
+                              السماح للزائر بإغلاق الشريط (X)
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1.5">

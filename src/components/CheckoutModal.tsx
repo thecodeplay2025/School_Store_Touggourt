@@ -28,9 +28,7 @@ export default function CheckoutModal({
   
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [selectedMuni, setSelectedMuni] = useState<Municipality>(
-    MUNICIPALITIES.find(m => m.available !== false) || MUNICIPALITIES[0]
-  );
+  const [selectedMuni, setSelectedMuni] = useState<Municipality | null>(null);
   const [address, setAddress] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successOrder, setSuccessOrder] = useState<Order | null>(null);
@@ -38,12 +36,10 @@ export default function CheckoutModal({
   React.useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      // Reset form and success states on open
+      // Reset form and success states on open (do not auto-select municipality)
       setName('');
       setPhone('');
-      setSelectedMuni(
-        municipalities.find(m => m.available !== false) || municipalities[0] || MUNICIPALITIES[0]
-      );
+      setSelectedMuni(null);
       setAddress('');
       setIsSubmitting(false);
       setSuccessOrder(null);
@@ -78,6 +74,10 @@ export default function CheckoutModal({
       return;
     }
     console.log("[1] User clicked Confirm Order");
+    if (!selectedMuni) {
+      alert('يرجى اختيار بلدية التوصيل من القائمة للمتابعة.');
+      return;
+    }
     if (selectedMuni.available === false) {
       alert('عذراً، الشحن متوقف مؤقتاً لهذه المنطقة. يرجى اختيار منطقة أخرى أو الاتصال بنا.');
       return;
@@ -199,7 +199,7 @@ export default function CheckoutModal({
                       <li>• <strong>رقم الهاتف:</strong> {successOrder.phone}</li>
                       <li>• <strong>البلدية:</strong> {successOrder.municipality}</li>
                       <li>• <strong>العنوان:</strong> {successOrder.address}</li>
-                      <li>• <strong>الوقت التقديري للتسليم:</strong> <span className="text-emerald-700 font-bold">{selectedMuni.deliveryTime}</span></li>
+                      <li>• <strong>الوقت التقديري للتسليم:</strong> <span className="text-emerald-700 font-bold">{selectedMuni?.deliveryTime || 'خلال 24-48 ساعة'}</span></li>
                       <li>• <strong>طريقة الدفع:</strong> نقداً عند الاستلام (COD)</li>
                     </ul>
                   </div>
@@ -245,180 +245,178 @@ export default function CheckoutModal({
                 </div>
               ) : (
                 /* Interactive Form View */
-                <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
+                <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
                   
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-5 sm:p-6">
-                    
-                    {/* Form Fields Column */}
-                    <div className="md:col-span-7 space-y-4">
+                  {/* Scrollable Form Content */}
+                  <div className="overflow-y-auto flex-1">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-5 sm:p-6">
                       
-                      {/* Name input */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-2">الاسم واللقب الكامل للزبون *</label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            required
-                            placeholder="مثال: محمد توقرتي"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all text-right"
-                            id="customer-name-input"
-                          />
-                          <User className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      {/* Form Fields Column */}
+                      <div className="md:col-span-7 space-y-4">
+                        
+                        {/* Name input */}
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-2">الاسم واللقب الكامل للزبون *</label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              required
+                              placeholder="مثال: محمد توقرتي"
+                              value={name}
+                              onChange={(e) => setName(e.target.value)}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all text-right"
+                              id="customer-name-input"
+                            />
+                            <User className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          </div>
                         </div>
+
+                        {/* Phone input */}
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-2">رقم الهاتف للتواصل وتأكيد الشحنة *</label>
+                          <div className="relative">
+                            <input
+                              type="tel"
+                              required
+                              placeholder="مثال: 0661223344"
+                              value={phone}
+                              onChange={(e) => setPhone(e.target.value)}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all text-left"
+                              dir="ltr"
+                              id="customer-phone-input"
+                            />
+                            <Phone className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-1.5 font-semibold">تأكد من كتابة الرقم بدقة لنتمكن من الاتصال بك عند وصول السائق.</p>
+                        </div>
+
+                        {/* Municipality select */}
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-2">بلدية التوصيل (داخل ولاية توقرت) *</label>
+                          <div className="relative">
+                            <select
+                              value={selectedMuni ? selectedMuni.name : ''}
+                              required
+                              onChange={(e) => {
+                                const found = municipalities.find(m => m.name === e.target.value);
+                                setSelectedMuni(found || null);
+                              }}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all appearance-none cursor-pointer text-right"
+                              id="municipality-select"
+                            >
+                              <option value="" disabled className="text-slate-400 font-normal">
+                                -- اختر البلدية من القائمة --
+                              </option>
+                              {municipalities.map((muni) => {
+                                const isAvail = muni.available !== false;
+                                return (
+                                  <option 
+                                    key={muni.name} 
+                                    value={muni.name}
+                                    disabled={!isAvail}
+                                    className={!isAvail ? "text-slate-400 font-bold bg-slate-100" : "text-slate-900 font-bold"}
+                                  >
+                                    {muni.name} {isAvail ? '(توصيل مجاني 🎁)' : ' - (الشحن غير متوفر حالياً 🚫)'}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                            <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          </div>
+                          {selectedMuni && selectedMuni.available === false && (
+                            <p className="text-xs text-rose-600 mt-1.5 font-bold animate-pulse">
+                              ⚠️ عذراً، الشحن متوقف حالياً لولاية/بلدية {selectedMuni.name}. يرجى اختيار منطقة أخرى.
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Precise Address */}
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-2">العنوان الكامل ومكان الإقامة الدقيق (اختياري)</label>
+                          <div className="relative">
+                            <textarea
+                              placeholder="اسم الحي، رقم الشارع، بالقرب من (مسجد أو مدرسة شهيرة لتسهيل التوصيل)..."
+                              value={address}
+                              onChange={(e) => setAddress(e.target.value)}
+                              rows={3}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all text-right resize-none"
+                              id="customer-address-input"
+                            />
+                            <MapPin className="absolute right-4 top-4 h-4 w-4 text-slate-400" />
+                          </div>
+                        </div>
+
                       </div>
 
-                      {/* Phone input */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-2">رقم الهاتف للتواصل وتأكيد الشحنة *</label>
-                        <div className="relative">
-                          <input
-                            type="tel"
-                            required
-                            placeholder="مثال: 0661223344"
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all text-left"
-                            dir="ltr"
-                            id="customer-phone-input"
-                          />
-                          <Phone className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        </div>
-                        <p className="text-[10px] text-slate-400 mt-1.5 font-semibold">تأكد من كتابة الرقم بدقة لنتمكن من الاتصال بك عند وصول السائق.</p>
-                      </div>
-
-                      {/* Municipality select */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-2">بلدية التوصيل (داخل ولاية توقرت) *</label>
-                        <div className="relative">
-                          <select
-                            value={selectedMuni.name}
-                            onChange={(e) => {
-                              const found = municipalities.find(m => m.name === e.target.value);
-                              if (found) setSelectedMuni(found);
-                            }}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all appearance-none cursor-pointer text-right"
-                            id="municipality-select"
-                          >
-                            {municipalities.map((muni) => {
-                              const isAvail = muni.available !== false;
-                              return (
-                                <option 
-                                  key={muni.name} 
-                                  value={muni.name}
-                                  disabled={!isAvail}
-                                  className={!isAvail ? "text-slate-400 font-bold bg-slate-100" : "text-slate-900 font-bold"}
-                                >
-                                  {muni.name} {isAvail ? '(توصيل مجاني 🎁)' : ' - (الشحن غير متوفر حالياً 🚫)'}
-                                </option>
-                              );
-                            })}
-                          </select>
-                          <MapPin className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        </div>
-                        {selectedMuni.available === false && (
-                          <p className="text-xs text-rose-600 mt-1.5 font-bold animate-pulse">
-                            ⚠️ عذراً، الشحن متوقف حالياً لولاية/بلدية {selectedMuni.name}. يرجى اختيار منطقة أخرى.
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Precise Address */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-2">العنوان الكامل ومكان الإقامة الدقيق (اختياري)</label>
-                        <div className="relative">
-                          <textarea
-                            placeholder="اسم الحي، رقم الشارع، بالقرب من (مسجد أو مدرسة شهيرة لتسهيل التوصيل)..."
-                            value={address}
-                            onChange={(e) => setAddress(e.target.value)}
-                            rows={3}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-11 pl-4 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all text-right resize-none"
-                            id="customer-address-input"
-                          />
-                          <MapPin className="absolute right-4 top-4 h-4 w-4 text-slate-400" />
-                        </div>
-                      </div>
-
-                    </div>
-
-                    {/* Order summary Panel (Right column) */}
-                    <div className="md:col-span-5 bg-slate-50/70 border border-slate-200/40 rounded-2xl p-4.5 flex flex-col justify-between h-fit space-y-4">
-                      
-                      <div>
-                        <h4 className="font-extrabold text-sm text-slate-900 border-b border-slate-200/50 pb-2.5 mb-3">ملخص طلبك</h4>
-                        <div className="max-h-40 overflow-y-auto space-y-2.5 pr-1.5">
-                          {cart.map((item) => (
-                            <div key={item.product.id} className="flex gap-2.5 items-start">
-                              <div className="h-10 w-10 bg-white border border-slate-100 rounded-lg p-1 shrink-0 flex items-center justify-center">
-                                <img src={getCompatibleImageUrl(item.product.image)} alt="" className="max-h-full max-w-full object-contain" referrerPolicy="no-referrer" />
+                      {/* Order summary Panel (Right column) */}
+                      <div className="md:col-span-5 bg-slate-50/70 border border-slate-200/40 rounded-2xl p-4.5 flex flex-col justify-between h-fit space-y-4">
+                        
+                        <div>
+                          <h4 className="font-extrabold text-sm text-slate-900 border-b border-slate-200/50 pb-2.5 mb-3">ملخص طلبك</h4>
+                          <div className="max-h-40 overflow-y-auto space-y-2.5 pr-1.5">
+                            {cart.map((item) => (
+                              <div key={item.product.id} className="flex gap-2.5 items-start">
+                                <div className="h-10 w-10 bg-white border border-slate-100 rounded-lg p-1 shrink-0 flex items-center justify-center">
+                                  <img src={getCompatibleImageUrl(item.product.image)} alt="" className="max-h-full max-w-full object-contain" referrerPolicy="no-referrer" />
+                                </div>
+                                <div className="text-right min-w-0 flex-1">
+                                  <p className="text-xs font-bold text-slate-900 truncate">{item.product.name}</p>
+                                  <p className="text-[10px] text-slate-400 mt-0.5 font-semibold">
+                                    {item.quantity} × {formatPrice(item.product.price)}
+                                  </p>
+                                  {item.product.isPack && item.product.packItems && (
+                                    <div className="mt-1 bg-white border border-slate-100 rounded-lg p-1.5 space-y-0.5 text-[9px] text-slate-500 font-medium max-h-[80px] overflow-y-auto" dir="rtl">
+                                      {item.product.packItems.map((pi, pIdx) => (
+                                        <div key={pi.id || pIdx} className="flex items-center justify-between gap-1">
+                                          <span className="truncate">• {pi.name}</span>
+                                          <span className="font-bold text-slate-400 shrink-0">({pi.quantity}x)</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-right min-w-0 flex-1">
-                                <p className="text-xs font-bold text-slate-900 truncate">{item.product.name}</p>
-                                <p className="text-[10px] text-slate-400 mt-0.5 font-semibold">
-                                  {item.quantity} × {formatPrice(item.product.price)}
-                                </p>
-                                {item.product.isPack && item.product.packItems && (
-                                  <div className="mt-1 bg-white border border-slate-100 rounded-lg p-1.5 space-y-0.5 text-[9px] text-slate-500 font-medium max-h-[80px] overflow-y-auto" dir="rtl">
-                                    {item.product.packItems.map((pi, pIdx) => (
-                                      <div key={pi.id || pIdx} className="flex items-center justify-between gap-1">
-                                        <span className="truncate">• {pi.name}</span>
-                                        <span className="font-bold text-slate-400 shrink-0">({pi.quantity}x)</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="space-y-2 pt-3 border-t border-slate-200/50 text-xs font-bold text-slate-600">
-                        <div className="flex items-center justify-between">
-                          <span>المجموع الفرعي:</span>
-                          <span className="text-slate-900">{formatPrice(subtotal)}</span>
+                        <div className="space-y-2 pt-3 border-t border-slate-200/50 text-xs font-bold text-slate-600">
+                          <div className="flex items-center justify-between">
+                            <span>المجموع الفرعي:</span>
+                            <span className="text-slate-900">{formatPrice(subtotal)}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span>قيمة التوصيل:</span>
+                            <span className={shippingFee === 0 ? 'text-emerald-600' : 'text-slate-900'}>
+                              {shippingFee === 0 ? 'مجاني' : formatPrice(shippingFee)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm font-extrabold text-slate-950 pt-2 border-t border-dashed border-slate-200">
+                            <span>الإجمالي المستحق:</span>
+                            <span className="text-brand-blue text-base">{formatPrice(total)}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span>قيمة التوصيل:</span>
-                          <span className={shippingFee === 0 ? 'text-emerald-600' : 'text-slate-900'}>
-                            {shippingFee === 0 ? 'مجاني' : formatPrice(shippingFee)}
+
+                        {/* Payment Method Badge */}
+                        <div className="bg-blue-50/70 border border-blue-100 p-3 rounded-xl">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-brand-blue">
+                            <Check className="h-4 w-4 bg-brand-blue text-white rounded-full p-0.5" />
+                            <span>الدفع نقداً عند استلام الطلبية (COD)</span>
                           </span>
+                          <p className="text-[10px] text-slate-500 font-semibold mt-1">الدفع الآمن والمفضل في الجزائر: تفقد أغراضك بكل أريحية ثم ادفع للسائق عند الباب.</p>
                         </div>
-                        <div className="flex items-center justify-between text-sm font-extrabold text-slate-950 pt-2 border-t border-dashed border-slate-200">
-                          <span>الإجمالي المستحق:</span>
-                          <span className="text-brand-blue text-base">{formatPrice(total)}</span>
-                        </div>
-                      </div>
 
-                      {/* Payment Method Badge */}
-                      <div className="bg-blue-50/70 border border-blue-100 p-3 rounded-xl">
-                        <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-brand-blue">
-                          <Check className="h-4 w-4 bg-brand-blue text-white rounded-full p-0.5" />
-                          <span>الدفع نقداً عند استلام الطلبية (COD)</span>
-                        </span>
-                        <p className="text-[10px] text-slate-500 font-semibold mt-1">الدفع الآمن والمفضل في الجزائر: تفقد أغراضك بكل أريحية ثم ادفع للسائق عند الباب.</p>
                       </div>
 
                     </div>
-
                   </div>
 
-                  {/* Form Footer Action */}
-                  <div className="p-5 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-4">
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="px-5 py-3 text-sm font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded-xl transition-all"
-                      id="cancel-checkout-button"
-                    >
-                      {isDirect ? 'العودة للمتجر' : 'تعديل السلة'}
-                    </button>
-                    
+                  {/* Fixed / Sticky Form Footer Action */}
+                  <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/95 backdrop-blur-xs shrink-0 flex items-center justify-end">
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="bg-brand-blue hover:bg-blue-700 disabled:bg-slate-300 text-white font-extrabold text-sm py-3 px-8 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+                      className="w-full sm:w-auto bg-brand-blue hover:bg-blue-700 disabled:bg-slate-300 text-white font-extrabold text-sm py-3.5 px-8 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                       id="submit-order-button"
                     >
                       {isSubmitting ? (

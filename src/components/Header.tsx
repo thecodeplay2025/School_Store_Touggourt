@@ -12,7 +12,11 @@ import {
   Sparkles,
   Heart,
   Home,
-  ArrowRight
+  ArrowRight,
+  Truck,
+  Gift,
+  Megaphone,
+  Tag
 } from 'lucide-react';
 import { CartItem, User, SiteSettings } from '../types';
 import midadLogo from '../assets/images/midad_logo.png';
@@ -74,21 +78,47 @@ export default function Header({
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-xs">
-      {/* Top Banner (Local Delivery / Promos) */}
-      {showPromo && (
-        <div className="bg-brand-blue text-white py-1 px-4 text-[11px] sm:text-xs font-medium text-center flex items-center justify-center gap-2 relative">
-          <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-pulse text-brand-yellow shrink-0" />
-          <span>توصيل مجاني بالكامل لكافة بلديات ولاية توقرت 🚚🎁</span>
-          <button 
-            onClick={() => {
-              setShowPromo(false);
-              localStorage.setItem('hide_school_store_promo_banner', 'true');
-            }}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors"
-            title="إغلاق"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+      {/* Top Banner (Local Delivery / Promos / Custom Announcement) */}
+      {(siteSettings?.showTopBanner ?? true) && showPromo && (
+        <div 
+          className="py-1 px-4 text-[11px] sm:text-xs font-medium text-center flex items-center justify-center gap-2 relative transition-colors shadow-xs"
+          style={{
+            backgroundColor: siteSettings?.topBannerBgColor || '#0284c7',
+            color: siteSettings?.topBannerTextColor || '#ffffff'
+          }}
+        >
+          {siteSettings?.topBannerIcon !== 'none' && (
+            <span className="shrink-0">
+              {siteSettings?.topBannerIcon === 'truck' ? (
+                <Truck className="h-3.5 w-3.5 text-amber-300 animate-bounce" />
+              ) : siteSettings?.topBannerIcon === 'bell' ? (
+                <Bell className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
+              ) : siteSettings?.topBannerIcon === 'gift' ? (
+                <Gift className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
+              ) : siteSettings?.topBannerIcon === 'megaphone' ? (
+                <Megaphone className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
+              ) : siteSettings?.topBannerIcon === 'tag' ? (
+                <Tag className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
+              )}
+            </span>
+          )}
+          <span className="font-bold tracking-wide">
+            {siteSettings?.promoBannerText || 'توصيل مجاني بالكامل لكافة بلديات ولاية توقرت 🚚🎁'}
+          </span>
+          {(siteSettings?.topBannerDismissible ?? true) && (
+            <button 
+              onClick={() => {
+                setShowPromo(false);
+                localStorage.setItem('hide_school_store_promo_banner', 'true');
+              }}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 p-0.5 text-white/80 hover:text-white rounded-full hover:bg-black/15 transition-colors cursor-pointer"
+              title="إغلاق"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       )}
 

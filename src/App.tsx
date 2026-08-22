@@ -21,7 +21,9 @@ import {
   AlertTriangle,
   ShoppingCart,
   Trash2,
-  ArrowRight
+  ArrowRight,
+  Smartphone,
+  Download
 } from 'lucide-react';
 
 import { Product, CartItem, Order, User, Review, SiteSettings, Category, Municipality, Affiliate } from './types';
@@ -41,6 +43,7 @@ import NotFoundView from './components/NotFoundView';
 import InfoPagesView from './components/InfoPagesView';
 import FAQView from './components/FAQView';
 import AffiliatePortalModal from './components/AffiliatePortalModal';
+import AppDownloadModal from './components/AppDownloadModal';
 
 import AuthView from './components/AuthView';
 import UserProfileView from './components/UserProfileView';
@@ -119,7 +122,12 @@ export default function App() {
       contactPhone2: '0771000000',
       warehouseAddress: 'حي المستقبل، وسط مدينة توقرت، الجزائر',
       freeShippingThreshold: 0,
-      promoBannerText: 'توصيل مجاني بالكامل لكافة بلديات ولاية توقرت 🚚🎁'
+      promoBannerText: 'توصيل مجاني بالكامل لكافة بلديات ولاية توقرت 🚚🎁',
+      showTopBanner: true,
+      topBannerBgColor: '#0284c7',
+      topBannerTextColor: '#ffffff',
+      topBannerIcon: 'sparkles',
+      topBannerDismissible: true
     };
   });
 
@@ -270,6 +278,8 @@ export default function App() {
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
   const [isAffiliatePortalOpen, setIsAffiliatePortalOpen] = useState(false);
+  const [isAppDownloadOpen, setIsAppDownloadOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   
   // Track order form states
   const [trackOrderId, setTrackOrderId] = useState('');
@@ -309,6 +319,26 @@ export default function App() {
   }, []);
 
   // 1.2. Direct Website Visitor Tracker (database backed, run once per browser session)
+  useEffect(() => {
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  const handleInstallNative = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choiceResult = await deferredPrompt.userChoice;
+      if (choiceResult?.outcome === 'accepted') {
+        setDeferredPrompt(null);
+        showToast('تم بدء تثبيت تطبيق مداد على جهازك!', 'success');
+      }
+    }
+  };
+
   useEffect(() => {
     const sessionVisited = sessionStorage.getItem('school_store_session_visited');
     if (!sessionVisited) {
@@ -1635,7 +1665,7 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 grid grid-cols-1 md:grid-cols-12 gap-8 border-b border-slate-800">
           
           {/* About Column */}
-          <div className="md:col-span-7 space-y-4 text-right">
+          <div className="md:col-span-5 space-y-4 text-right">
             <div className="flex items-center gap-2">
               <img 
                 src={siteSettings?.logoUrl ? getCompatibleImageUrl(siteSettings.logoUrl) : midadLogo} 
@@ -1648,24 +1678,47 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
             <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-medium">
               متجرنا هو وجهتك الإلكترونية المحلية الأولى بولاية توقرت لشراء كافة اللوازم والمستلزمات المدرسية والأكاديمية بأفضل الأسعار. نسهل حياة التلاميذ والطلبة الجامعيين والأولياء من خلال توصيل السلع الأصلية المضمونة مباشرة لباب منازلكم والدفع عند المعاينة والاستلام.
             </p>
-            <div className="flex gap-2 text-xs font-semibold text-slate-300">
+            <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-300">
               <span className="bg-white/10 px-3 py-1 rounded-md">🇩🇿 ولاية توقرت</span>
               <span className="bg-white/10 px-3 py-1 rounded-md">📦 الدفع عند الاستلام</span>
             </div>
           </div>
 
           {/* Contact details */}
-          <div className="md:col-span-5 space-y-4 text-right">
+          <div className="md:col-span-4 space-y-4 text-right">
             <h4 className="text-sm font-black uppercase text-brand-yellow tracking-wider">تواصل معنا هاتفياً أو محلياً</h4>
             <p className="text-xs text-slate-400 leading-relaxed font-medium">
               نحن سعداء بخدمتكم وتوفير الطلبات الخاصة للمدارس والمؤسسات التربوية والجمعيات الخيرية بتوقرت بأسعار حصرية ومخفضة.
             </p>
             <div className="space-y-2 text-xs font-semibold text-slate-300">
               <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-brand-blue" />
+                <MapPin className="h-4 w-4 text-brand-blue shrink-0" />
                 <span>المستودع الرئيسي: حي المستقبل، وسط مدينة توقرت، الجزائر</span>
               </div>
             </div>
+          </div>
+
+          {/* Download App Block */}
+          <div className="md:col-span-3 space-y-4 text-right bg-slate-800/60 p-5 rounded-3xl border border-slate-700/60 flex flex-col justify-between">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-[11px] font-black text-amber-400 bg-amber-400/10 px-2.5 py-0.5 rounded-full mb-2">
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>تطبيق خفيف وسريع</span>
+              </div>
+              <h4 className="text-sm font-black text-white">حمّل تطبيق مداد على هاتفك</h4>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                تصفح المنتجات واطلب مستلزماتك المدرسية بلمسة واحدة مباشرة من شاشة هاتفك.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setIsAppDownloadOpen(true)}
+              className="w-full bg-gradient-to-r from-brand-blue to-blue-600 hover:from-blue-600 hover:to-brand-blue active:scale-95 text-white font-black py-3 px-4 rounded-2xl shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 text-xs transition-all cursor-pointer border border-blue-400/30"
+              id="footer-download-app-btn"
+            >
+              <Download className="w-4 h-4 animate-bounce" />
+              <span>تحميل وتثبيت التطبيق</span>
+            </button>
           </div>
 
         </div>
@@ -1675,6 +1728,14 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-slate-500">
             <p>© {new Date().getFullYear()} midad | مداد. جميع الحقوق محفوظة لولاية توقرت بالجزائر.</p>
             <div className="flex flex-wrap items-center gap-4">
+              <button 
+                onClick={() => setIsAppDownloadOpen(true)} 
+                className="text-amber-400 hover:text-amber-300 font-black flex items-center gap-1.5 cursor-pointer bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-amber-400/20 transition-all hover:scale-105"
+                id="footer-bottom-download-btn"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-amber-400" />
+                <span>تحميل التطبيق</span>
+              </button>
               <button onClick={() => { setCurrentView('terms'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:underline hover:text-white cursor-pointer">شروط الاستخدام</button>
               <button onClick={() => { setCurrentView('privacy'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:underline hover:text-white cursor-pointer">سياسة الخصوصية</button>
               <button onClick={() => { setCurrentView('shipping'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="hover:underline hover:text-white cursor-pointer">الشحن والإرجاع</button>
@@ -1753,6 +1814,14 @@ ${orderWithUser.referrer ? `\n👥 <b>رمز المسوّق:</b> <code>${escapeH
         affiliates={affiliates}
         orders={recentOrders}
         formatPrice={formatPrice}
+      />
+
+      {/* App Download Modal */}
+      <AppDownloadModal
+        isOpen={isAppDownloadOpen}
+        onClose={() => setIsAppDownloadOpen(false)}
+        deferredPrompt={deferredPrompt}
+        onInstallNative={handleInstallNative}
       />
 
       {/* Clear Cart Confirmation Modal */}

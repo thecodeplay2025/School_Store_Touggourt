@@ -92,6 +92,12 @@ export interface SiteSettings {
   warehouseAddress: string;
   freeShippingThreshold: number;
   promoBannerText: string;
+  // Top Announcement Bar Customization
+  showTopBanner?: boolean;
+  topBannerBgColor?: string;
+  topBannerTextColor?: string;
+  topBannerIcon?: 'sparkles' | 'truck' | 'bell' | 'tag' | 'gift' | 'megaphone' | 'none';
+  topBannerDismissible?: boolean;
   logoUrl?: string;
   referralCommissionRate?: number; // percentage, e.g. 10 for 10%
   // Hero Banner Customization

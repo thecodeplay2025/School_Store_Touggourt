@@ -375,383 +375,401 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
       dir="rtl"
       id="image-cropper-modal"
     >
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[96vh] flex flex-col shadow-2xl overflow-hidden text-right text-slate-100">
-        {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between gap-4 bg-slate-950/60 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-brand-blue/15 text-brand-blue flex items-center justify-center border border-brand-blue/30 shadow-inner">
-              <Scissors className="h-5 w-5" />
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl w-full max-w-4xl h-[92vh] sm:h-auto sm:max-h-[94vh] flex flex-col shadow-2xl overflow-hidden text-right text-slate-100 my-auto">
+        {/* Header - Always Visible / Sticky */}
+        <div className="p-3 sm:p-4 border-b border-slate-800 flex items-center justify-between gap-3 bg-slate-950/90 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-2xl bg-brand-blue/15 text-brand-blue flex items-center justify-center border border-brand-blue/30 shadow-inner shrink-0">
+              <Scissors className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-black text-white">{config.title}</h3>
-                <span className="bg-slate-800 text-slate-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-slate-700">
+                <h3 className="text-sm sm:text-base font-black text-white">{config.title}</h3>
+                <span className="bg-slate-800 text-slate-300 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-slate-700">
                   {ASPECT_RATIOS.find(r => r.id === selectedRatioId)?.label || 'نسبة مخصصة'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-medium mt-0.5">{config.hint}</p>
+              <p className="text-[11px] sm:text-xs text-slate-400 font-medium mt-0.5 line-clamp-1">{config.hint}</p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition-all cursor-pointer"
-            title="إغلاق"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Mode Selector & Aspect Ratios */}
-        <div className="px-4 py-3 bg-slate-950/70 border-b border-slate-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
-          {/* Fit vs Crop Mode Selection */}
-          <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-2xl border border-slate-800">
+          <div className="flex items-center gap-2">
+            {/* Quick Apply Button on Header for Ultra Fast Access */}
             <button
               type="button"
-              onClick={() => setFitMode('pad_fit')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-                fitMode === 'pad_fit'
-                  ? 'bg-brand-blue text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-              title="ملاءمة الصورة للـ DIV وإكمال أي فراغ ناقص بنفس لون خلفية الصورة"
+              onClick={handleExecuteCrop}
+              disabled={isProcessing || !imageLoaded}
+              className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md shadow-emerald-900/40 cursor-pointer sm:hidden"
+              title="ملاءمة واعتماد الصورة"
             >
-              <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-              <span>ملاءمة DIV مع إكمال الفراغ 🎨</span>
+              <Check className="h-3.5 w-3.5" />
+              <span>اعتماد</span>
             </button>
 
             <button
               type="button"
-              onClick={() => setFitMode('crop')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                fitMode === 'crop'
-                  ? 'bg-slate-800 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-              title="قص مباشر ملء الإطار"
+              onClick={onClose}
+              className="p-1.5 sm:p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition-all cursor-pointer"
+              title="إغلاق"
             >
-              <Scissors className="h-3.5 w-3.5" />
-              <span>قص ملء الإطار</span>
+              <X className="h-5 w-5" />
             </button>
-          </div>
-
-          {/* Aspect Ratios Selector */}
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-            {ASPECT_RATIOS.map(item => {
-              const isSelected = selectedRatioId === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setSelectedRatioId(item.id)}
-                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
-                    isSelected
-                      ? 'bg-slate-700 text-white ring-1 ring-white/20'
-                      : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800'
-                  }`}
-                >
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
           </div>
         </div>
 
-        {/* Background Color Indicator & Sampler Bar */}
-        {fitMode === 'pad_fit' && (
-          <div className="px-4 py-2 bg-slate-950/40 border-b border-slate-800/60 flex items-center justify-between text-xs font-medium text-slate-300 shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-[11px] font-bold text-slate-400">
-                <Palette className="h-3.5 w-3.5 text-brand-blue" />
-                <span>لون إكمال حواف الصورة:</span>
-              </span>
-              <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700/80 px-2 py-0.5 rounded-lg">
-                <span
-                  className="w-4 h-4 rounded-md border border-slate-600 shadow-xs inline-block shrink-0"
-                  style={{ backgroundColor: customBgColor || detectedBgColor }}
-                />
-                <span className="font-mono text-[10px] text-slate-300 uppercase">
-                  {customBgColor || detectedBgColor}
+        {/* Scrollable Middle Body (Modes + Crop Viewport + Controls) */}
+        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col divide-y divide-slate-800/80">
+          {/* Mode Selector & Aspect Ratios */}
+          <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-950/70 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0">
+            {/* Fit vs Crop Mode Selection */}
+            <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-2xl border border-slate-800">
+              <button
+                type="button"
+                onClick={() => setFitMode('pad_fit')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                  fitMode === 'pad_fit'
+                    ? 'bg-brand-blue text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="ملاءمة الصورة للـ DIV وإكمال أي فراغ ناقص بنفس لون خلفية الصورة"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                <span>ملاءمة DIV مع إكمال الفراغ 🎨</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFitMode('crop')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  fitMode === 'crop'
+                    ? 'bg-slate-800 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="قص مباشر ملء الإطار"
+              >
+                <Scissors className="h-3.5 w-3.5" />
+                <span>قص ملء الإطار</span>
+              </button>
+            </div>
+
+            {/* Aspect Ratios Selector */}
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1 sm:pb-0">
+              {ASPECT_RATIOS.map(item => {
+                const isSelected = selectedRatioId === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setSelectedRatioId(item.id)}
+                    className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
+                      isSelected
+                        ? 'bg-slate-700 text-white ring-1 ring-white/20'
+                        : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Background Color Indicator & Sampler Bar */}
+          {fitMode === 'pad_fit' && (
+            <div className="px-3 sm:px-4 py-1.5 bg-slate-950/40 flex items-center justify-between text-xs font-medium text-slate-300 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1 text-[11px] font-bold text-slate-400">
+                  <Palette className="h-3.5 w-3.5 text-brand-blue" />
+                  <span>لون إكمال حواف الصورة:</span>
                 </span>
-                <input
-                  type="color"
-                  value={customBgColor || detectedBgColor}
-                  onChange={(e) => setCustomBgColor(e.target.value)}
-                  className="w-4 h-4 opacity-0 absolute cursor-pointer"
-                  title="تغيير لون إكمال الخلفية يدوياً"
-                />
+                <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700/80 px-2 py-0.5 rounded-lg relative">
+                  <span
+                    className="w-3.5 h-3.5 rounded-md border border-slate-600 shadow-xs inline-block shrink-0"
+                    style={{ backgroundColor: customBgColor || detectedBgColor }}
+                  />
+                  <span className="font-mono text-[10px] text-slate-300 uppercase">
+                    {customBgColor || detectedBgColor}
+                  </span>
+                  <input
+                    type="color"
+                    value={customBgColor || detectedBgColor}
+                    onChange={(e) => setCustomBgColor(e.target.value)}
+                    className="w-full h-full opacity-0 absolute inset-0 cursor-pointer"
+                    title="تغيير لون إكمال الخلفية يدوياً"
+                  />
+                </div>
+                <span className="text-[10px] text-emerald-400 font-bold hidden sm:inline">
+                  (تم التعرف التلقائي ✨)
+                </span>
               </div>
-              <span className="text-[10px] text-emerald-400 font-bold hidden sm:inline">
-                (تم التعرف التلقائي على خلفية الصورة ✨)
-              </span>
+
+              <button
+                type="button"
+                onClick={() => setCustomBgColor(detectedBgColor)}
+                className="text-[10px] text-brand-blue hover:text-blue-400 font-bold underline cursor-pointer"
+              >
+                استعادة التلقائي
+              </button>
+            </div>
+          )}
+
+          {/* Main Crop Viewport */}
+          <div className="flex-1 min-h-[180px] sm:min-h-[240px] max-h-[38vh] bg-slate-950 p-2 sm:p-4 flex items-center justify-center relative overflow-hidden select-none">
+            <div
+              ref={containerRef}
+              className="relative inline-block max-w-full max-h-full cursor-crosshair touch-none shadow-2xl rounded-lg overflow-hidden border border-slate-700"
+              style={{ backgroundColor: customBgColor || detectedBgColor }}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+            >
+              {/* Base Image */}
+              <img
+                ref={imageRef}
+                src={convertGoogleDriveUrl(imageSrc)}
+                alt="Crop target"
+                crossOrigin="anonymous"
+                referrerPolicy="no-referrer"
+                onLoad={handleImageLoad}
+                style={{
+                  transform: `rotate(${rotation}deg) scaleX(${flipH ? -1 : 1}) scaleY(${flipV ? -1 : 1}) scale(${zoom})`,
+                  transition: 'transform 0.15s ease-out',
+                  maxHeight: '34vh',
+                  maxWidth: '100%',
+                  objectFit: 'contain',
+                  display: 'block'
+                }}
+                className="pointer-events-none select-none"
+              />
+
+              {/* Dark Mask Around Crop Box */}
+              {imageLoaded && (
+                <>
+                  {/* Top mask */}
+                  <div
+                    className="absolute left-0 right-0 top-0 bg-slate-950/75 backdrop-blur-[1px] pointer-events-none transition-all"
+                    style={{ height: `${cropBox.y}%` }}
+                  />
+                  {/* Bottom mask */}
+                  <div
+                    className="absolute left-0 right-0 bottom-0 bg-slate-950/75 backdrop-blur-[1px] pointer-events-none transition-all"
+                    style={{ height: `${100 - (cropBox.y + cropBox.height)}%` }}
+                  />
+                  {/* Left mask */}
+                  <div
+                    className="absolute top-0 bottom-0 left-0 bg-slate-950/75 backdrop-blur-[1px] pointer-events-none transition-all"
+                    style={{
+                      top: `${cropBox.y}%`,
+                      height: `${cropBox.height}%`,
+                      width: `${cropBox.x}%`
+                    }}
+                  />
+                  {/* Right mask */}
+                  <div
+                    className="absolute top-0 bottom-0 right-0 bg-slate-950/75 backdrop-blur-[1px] pointer-events-none transition-all"
+                    style={{
+                      top: `${cropBox.y}%`,
+                      height: `${cropBox.height}%`,
+                      width: `${100 - (cropBox.x + cropBox.width)}%`
+                    }}
+                  />
+
+                  {/* Active Interactive Crop Box */}
+                  <div
+                    className="absolute border-2 border-brand-blue shadow-[0_0_0_1px_rgba(255,255,255,0.7)] cursor-move touch-none"
+                    style={{
+                      left: `${cropBox.x}%`,
+                      top: `${cropBox.y}%`,
+                      width: `${cropBox.width}%`,
+                      height: `${cropBox.height}%`
+                    }}
+                    onPointerDown={(e) => handlePointerDown(e, 'move')}
+                  >
+                    {/* Grid Lines (Rule of thirds) */}
+                    <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none opacity-40">
+                      <div className="border-r border-b border-white/60" />
+                      <div className="border-r border-b border-white/60" />
+                      <div className="border-b border-white/60" />
+                      <div className="border-r border-b border-white/60" />
+                      <div className="border-r border-b border-white/60" />
+                      <div className="border-b border-white/60" />
+                      <div className="border-r border-b border-white/60" />
+                      <div className="border-r border-b border-white/60" />
+                      <div />
+                    </div>
+
+                    {/* Corner Resize Handles */}
+                    <div
+                      onPointerDown={(e) => handlePointerDown(e, 'nw')}
+                      className="absolute -top-2 -left-2 w-4 h-4 bg-white border-2 border-brand-blue rounded-full shadow-md cursor-nwse-resize z-20"
+                    />
+                    <div
+                      onPointerDown={(e) => handlePointerDown(e, 'ne')}
+                      className="absolute -top-2 -right-2 w-4 h-4 bg-white border-2 border-brand-blue rounded-full shadow-md cursor-nesw-resize z-20"
+                    />
+                    <div
+                      onPointerDown={(e) => handlePointerDown(e, 'sw')}
+                      className="absolute -bottom-2 -left-2 w-4 h-4 bg-white border-2 border-brand-blue rounded-full shadow-md cursor-nesw-resize z-20"
+                    />
+                    <div
+                      onPointerDown={(e) => handlePointerDown(e, 'se')}
+                      className="absolute -bottom-2 -right-2 w-4 h-4 bg-white border-2 border-brand-blue rounded-full shadow-md cursor-nwse-resize z-20"
+                    />
+
+                    {/* Edge Handles */}
+                    <div
+                      onPointerDown={(e) => handlePointerDown(e, 'n')}
+                      className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-6 h-2.5 bg-white border border-brand-blue rounded-full shadow-xs cursor-ns-resize z-20"
+                    />
+                    <div
+                      onPointerDown={(e) => handlePointerDown(e, 's')}
+                      className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-6 h-2.5 bg-white border border-brand-blue rounded-full shadow-xs cursor-ns-resize z-20"
+                    />
+                    <div
+                      onPointerDown={(e) => handlePointerDown(e, 'w')}
+                      className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-6 bg-white border border-brand-blue rounded-full shadow-xs cursor-ew-resize z-20"
+                    />
+                    <div
+                      onPointerDown={(e) => handlePointerDown(e, 'e')}
+                      className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-6 bg-white border border-brand-blue rounded-full shadow-xs cursor-ew-resize z-20"
+                    />
+
+                    {/* Center Placement badge */}
+                    <div className="absolute top-2 right-2 bg-slate-900/80 backdrop-blur-xs text-white text-[9px] font-black py-0.5 px-2 rounded-md pointer-events-none border border-white/20">
+                      {ASPECT_RATIOS.find(r => r.id === selectedRatioId)?.label}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Toolbar Controls: Zoom, Rotate, Flip */}
+          <div className="p-2.5 sm:p-3.5 bg-slate-950/90 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            {/* Zoom Slider */}
+            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 py-1 px-2.5 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setZoom(prev => Math.max(0.5, prev - 0.1))}
+                className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                title="تصغير المعاينة"
+              >
+                <ZoomOut className="h-3.5 w-3.5" />
+              </button>
+              <input
+                type="range"
+                min="0.5"
+                max="2.5"
+                step="0.05"
+                value={zoom}
+                onChange={(e) => setZoom(parseFloat(e.target.value))}
+                className="w-16 sm:w-24 accent-brand-blue cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+              />
+              <button
+                type="button"
+                onClick={() => setZoom(prev => Math.min(2.5, prev + 0.1))}
+                className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                title="تكبير المعاينة"
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </button>
+              <span className="text-[10px] font-mono text-slate-400 w-7 text-center">{Math.round(zoom * 100)}%</span>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setCustomBgColor(detectedBgColor)}
-              className="text-[10px] text-brand-blue hover:text-blue-400 font-bold underline cursor-pointer"
-            >
-              استعادة اللون التلقائي
-            </button>
-          </div>
-        )}
+            {/* Transformations: Rotate & Flip */}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setRotation(r => (r - 90) % 360)}
+                className="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 p-1.5 sm:p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                title="تدوير 90 درجة لليسار"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span className="hidden md:inline text-[10px]">يسار</span>
+              </button>
 
-        {/* Main Crop Viewport */}
-        <div className="flex-1 min-h-[320px] max-h-[50vh] bg-slate-950 p-4 sm:p-6 flex items-center justify-center relative overflow-hidden select-none">
-          <div
-            ref={containerRef}
-            className="relative inline-block max-w-full max-h-full cursor-crosshair touch-none shadow-2xl rounded-lg overflow-hidden border border-slate-700"
-            style={{ backgroundColor: customBgColor || detectedBgColor }}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-          >
-            {/* Base Image */}
-            <img
-              ref={imageRef}
-              src={convertGoogleDriveUrl(imageSrc)}
-              alt="Crop target"
-              crossOrigin="anonymous"
-              referrerPolicy="no-referrer"
-              onLoad={handleImageLoad}
-              style={{
-                transform: `rotate(${rotation}deg) scaleX(${flipH ? -1 : 1}) scaleY(${flipV ? -1 : 1}) scale(${zoom})`,
-                transition: 'transform 0.15s ease-out',
-                maxHeight: '44vh',
-                maxWidth: '100%',
-                objectFit: 'contain',
-                display: 'block'
-              }}
-              className="pointer-events-none select-none"
-            />
+              <button
+                type="button"
+                onClick={() => setRotation(r => (r + 90) % 360)}
+                className="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 p-1.5 sm:p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                title="تدوير 90 درجة لليمين"
+              >
+                <RotateCw className="h-3.5 w-3.5" />
+                <span className="hidden md:inline text-[10px]">يمين</span>
+              </button>
 
-            {/* Dark Mask Around Crop Box */}
-            {imageLoaded && (
-              <>
-                {/* Top mask */}
-                <div
-                  className="absolute left-0 right-0 top-0 bg-slate-950/75 backdrop-blur-[1px] pointer-events-none transition-all"
-                  style={{ height: `${cropBox.y}%` }}
-                />
-                {/* Bottom mask */}
-                <div
-                  className="absolute left-0 right-0 bottom-0 bg-slate-950/75 backdrop-blur-[1px] pointer-events-none transition-all"
-                  style={{ height: `${100 - (cropBox.y + cropBox.height)}%` }}
-                />
-                {/* Left mask */}
-                <div
-                  className="absolute top-0 bottom-0 left-0 bg-slate-950/75 backdrop-blur-[1px] pointer-events-none transition-all"
-                  style={{
-                    top: `${cropBox.y}%`,
-                    height: `${cropBox.height}%`,
-                    width: `${cropBox.x}%`
-                  }}
-                />
-                {/* Right mask */}
-                <div
-                  className="absolute top-0 bottom-0 right-0 bg-slate-950/75 backdrop-blur-[1px] pointer-events-none transition-all"
-                  style={{
-                    top: `${cropBox.y}%`,
-                    height: `${cropBox.height}%`,
-                    width: `${100 - (cropBox.x + cropBox.width)}%`
-                  }}
-                />
+              <button
+                type="button"
+                onClick={() => setFlipH(f => !f)}
+                className={`border p-1.5 sm:p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                  flipH ? 'bg-brand-blue/20 text-brand-blue border-brand-blue/40' : 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-800'
+                }`}
+                title="قلب أفقي (مرآة)"
+              >
+                <FlipHorizontal className="h-3.5 w-3.5" />
+                <span className="hidden md:inline text-[10px]">أفقي</span>
+              </button>
 
-                {/* Active Interactive Crop Box */}
-                <div
-                  className="absolute border-2 border-brand-blue shadow-[0_0_0_1px_rgba(255,255,255,0.7)] cursor-move touch-none"
-                  style={{
-                    left: `${cropBox.x}%`,
-                    top: `${cropBox.y}%`,
-                    width: `${cropBox.width}%`,
-                    height: `${cropBox.height}%`
-                  }}
-                  onPointerDown={(e) => handlePointerDown(e, 'move')}
-                >
-                  {/* Grid Lines (Rule of thirds) */}
-                  <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none opacity-40">
-                    <div className="border-r border-b border-white/60" />
-                    <div className="border-r border-b border-white/60" />
-                    <div className="border-b border-white/60" />
-                    <div className="border-r border-b border-white/60" />
-                    <div className="border-r border-b border-white/60" />
-                    <div className="border-b border-white/60" />
-                    <div className="border-r border-white/60" />
-                    <div className="border-r border-white/60" />
-                    <div />
-                  </div>
+              <button
+                type="button"
+                onClick={() => setFlipV(f => !f)}
+                className={`border p-1.5 sm:p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                  flipV ? 'bg-brand-blue/20 text-brand-blue border-brand-blue/40' : 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-800'
+                }`}
+                title="قلب رأسي"
+              >
+                <FlipVertical className="h-3.5 w-3.5" />
+                <span className="hidden md:inline text-[10px]">رأسي</span>
+              </button>
 
-                  {/* Corner Resize Handles */}
-                  <div
-                    onPointerDown={(e) => handlePointerDown(e, 'nw')}
-                    className="absolute -top-2 -left-2 w-4 h-4 bg-white border-2 border-brand-blue rounded-full shadow-md cursor-nwse-resize z-20"
-                  />
-                  <div
-                    onPointerDown={(e) => handlePointerDown(e, 'ne')}
-                    className="absolute -top-2 -right-2 w-4 h-4 bg-white border-2 border-brand-blue rounded-full shadow-md cursor-nesw-resize z-20"
-                  />
-                  <div
-                    onPointerDown={(e) => handlePointerDown(e, 'sw')}
-                    className="absolute -bottom-2 -left-2 w-4 h-4 bg-white border-2 border-brand-blue rounded-full shadow-md cursor-nesw-resize z-20"
-                  />
-                  <div
-                    onPointerDown={(e) => handlePointerDown(e, 'se')}
-                    className="absolute -bottom-2 -right-2 w-4 h-4 bg-white border-2 border-brand-blue rounded-full shadow-md cursor-nwse-resize z-20"
-                  />
-
-                  {/* Edge Handles */}
-                  <div
-                    onPointerDown={(e) => handlePointerDown(e, 'n')}
-                    className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-6 h-2.5 bg-white border border-brand-blue rounded-full shadow-xs cursor-ns-resize z-20"
-                  />
-                  <div
-                    onPointerDown={(e) => handlePointerDown(e, 's')}
-                    className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-6 h-2.5 bg-white border border-brand-blue rounded-full shadow-xs cursor-ns-resize z-20"
-                  />
-                  <div
-                    onPointerDown={(e) => handlePointerDown(e, 'w')}
-                    className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-2.5 h-6 bg-white border border-brand-blue rounded-full shadow-xs cursor-ew-resize z-20"
-                  />
-                  <div
-                    onPointerDown={(e) => handlePointerDown(e, 'e')}
-                    className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-6 bg-white border border-brand-blue rounded-full shadow-xs cursor-ew-resize z-20"
-                  />
-
-                  {/* Center Placement badge */}
-                  <div className="absolute top-2 right-2 bg-slate-900/80 backdrop-blur-xs text-white text-[9px] font-black py-0.5 px-2 rounded-md pointer-events-none border border-white/20">
-                    {ASPECT_RATIOS.find(r => r.id === selectedRatioId)?.label}
-                  </div>
-                </div>
-              </>
-            )}
+              <button
+                type="button"
+                onClick={() => {
+                  setRotation(0);
+                  setFlipH(false);
+                  setFlipV(false);
+                  setZoom(1);
+                  setCustomBgColor(detectedBgColor);
+                  resetCropToRatio(selectedRatioId);
+                }}
+                className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 p-1.5 sm:p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                title="إعادة ضبط الوضع الافتراضي"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span className="hidden md:inline text-[10px]">ضبط</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Toolbar Controls: Zoom, Rotate, Flip */}
-        <div className="p-3 sm:p-4 bg-slate-950/80 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 shrink-0">
-          {/* Zoom Slider */}
-          <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 py-1.5 px-3 rounded-2xl">
-            <button
-              type="button"
-              onClick={() => setZoom(prev => Math.max(0.5, prev - 0.1))}
-              className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
-              title="تصغير المعاينة"
-            >
-              <ZoomOut className="h-4 w-4" />
-            </button>
-            <input
-              type="range"
-              min="0.5"
-              max="2.5"
-              step="0.05"
-              value={zoom}
-              onChange={(e) => setZoom(parseFloat(e.target.value))}
-              className="w-20 sm:w-28 accent-brand-blue cursor-pointer h-1.5 bg-slate-800 rounded-lg"
-            />
-            <button
-              type="button"
-              onClick={() => setZoom(prev => Math.min(2.5, prev + 0.1))}
-              className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
-              title="تكبير المعاينة"
-            >
-              <ZoomIn className="h-4 w-4" />
-            </button>
-            <span className="text-[10px] font-mono text-slate-400 w-8 text-center">{Math.round(zoom * 100)}%</span>
-          </div>
-
-          {/* Transformations: Rotate & Flip */}
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setRotation(r => (r - 90) % 360)}
-              className="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-              title="تدوير 90 درجة لليسار"
-            >
-              <RotateCcw className="h-4 w-4" />
-              <span className="hidden sm:inline text-[11px]">تدوير لليسار</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setRotation(r => (r + 90) % 360)}
-              className="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-              title="تدوير 90 درجة لليمين"
-            >
-              <RotateCw className="h-4 w-4" />
-              <span className="hidden sm:inline text-[11px]">تدوير لليمين</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setFlipH(f => !f)}
-              className={`border p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                flipH ? 'bg-brand-blue/20 text-brand-blue border-brand-blue/40' : 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-800'
-              }`}
-              title="قلب أفقي (مرآة)"
-            >
-              <FlipHorizontal className="h-4 w-4" />
-              <span className="hidden sm:inline text-[11px]">قلب أفقي</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setFlipV(f => !f)}
-              className={`border p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                flipV ? 'bg-brand-blue/20 text-brand-blue border-brand-blue/40' : 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-800'
-              }`}
-              title="قلب رأسي"
-            >
-              <FlipVertical className="h-4 w-4" />
-              <span className="hidden sm:inline text-[11px]">قلب رأسي</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setRotation(0);
-                setFlipH(false);
-                setFlipV(false);
-                setZoom(1);
-                setCustomBgColor(detectedBgColor);
-                resetCropToRatio(selectedRatioId);
-              }}
-              className="bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 p-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-              title="إعادة ضبط الوضع الافتراضي"
-            >
-              <RefreshCw className="h-4 w-4" />
-              <span className="hidden sm:inline text-[11px]">إعادة ضبط</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Footer CTAs */}
-        <div className="p-4 sm:p-5 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-950 shrink-0">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+        {/* Footer CTAs - Pinned at the bottom, ALWAYS 100% VISIBLE! */}
+        <div className="p-3 sm:p-4 border-t border-slate-800 flex items-center justify-between gap-3 bg-slate-950 shrink-0 shadow-lg z-20">
+          <div className="flex items-center gap-2">
             {onSkipCrop && (
               <button
                 type="button"
                 onClick={onSkipCrop}
                 disabled={isProcessing}
-                className="flex-1 sm:flex-initial py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer text-center"
+                className="py-2.5 px-3 sm:px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer text-center"
               >
-                تخطي القص واستخدام الأصل ⏩
+                تخطي القص ⏩
               </button>
             )}
             <button
               type="button"
               onClick={onClose}
               disabled={isProcessing}
-              className="flex-1 sm:flex-initial py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 rounded-xl text-xs font-bold transition-all cursor-pointer text-center"
+              className="py-2.5 px-3 sm:px-4 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 rounded-xl text-xs font-bold transition-all cursor-pointer text-center"
             >
               إلغاء ✕
             </button>
           </div>
 
+          {/* Primary Action Button: ملاءمة واعتماد الصورة */}
           <button
             type="button"
             onClick={handleExecuteCrop}
             disabled={isProcessing || !imageLoaded}
-            className="w-full sm:w-auto py-3 px-6 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-900/30 active:scale-[0.98]"
+            className="flex-1 sm:flex-initial py-2.5 sm:py-3 px-5 sm:px-7 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-900/40 active:scale-[0.98]"
           >
             {isProcessing ? (
               <>

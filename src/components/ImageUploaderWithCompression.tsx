@@ -10,6 +10,7 @@ interface ImageUploaderWithCompressionProps {
   label?: string;
   placeholder?: string;
   placement?: CropPlacement;
+  required?: boolean;
   triggerNotification?: (msg: string, type?: 'success' | 'info' | 'error') => void;
   className?: string;
 }
@@ -20,6 +21,7 @@ export const ImageUploaderWithCompression: React.FC<ImageUploaderWithCompression
   label = 'صورة المنتج (رابط أو رفع ملف من جهازك)',
   placeholder = 'أدخل رابط الصورة (URL) أو ارفع ملفاً بالأسفل...',
   placement = 'product',
+  required = false,
   triggerNotification,
   className = ''
 }) => {
@@ -110,7 +112,25 @@ export const ImageUploaderWithCompression: React.FC<ImageUploaderWithCompression
 
   return (
     <div className={`space-y-2 ${className}`}>
-      {label && <label className="block text-xs font-bold text-slate-400">{label}</label>}
+      {label && (
+        <div className="flex items-center justify-between">
+          <label className="block text-xs font-bold text-slate-700">
+            {label}
+            {required && <span className="text-rose-500 mr-1 font-black">*</span>}
+          </label>
+          {required && !imageUrl && (
+            <span className="text-[10px] bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded-full font-bold">
+              إجباري
+            </span>
+          )}
+          {imageUrl && (
+            <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" />
+              تم إدراج الصورة
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2">
         {/* URL Input */}
